@@ -9,7 +9,8 @@ pub enum Instruction {
     LD_iR16_N(R16, u8),
     LD_R_iR16(R8, R16),
     LD_R_iN16(R8, u16),
-    LD_iN16_R(u16, R8),
+    LD_iN_R(u16, R8),
+    LD_R_iN(R8, u16),
     LDIO_R_N(R8, u8, u8),
     LDIO_N_R(u8, u8, R8),
     LDIO_iR_R(R8, u8, R8),
@@ -118,7 +119,7 @@ pub enum Instruction {
     RET,
     RET_C(Condition),
     RETI,
-    RST_N(u8),
+    RST(u8),
 }
 
 pub enum Condition {

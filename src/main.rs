@@ -1,5 +1,8 @@
 mod peripheries;
 mod instruction;
+mod engine;
+
+use engine::Engine;
 
 fn main() {
     let m = peripheries::Cpu {
@@ -14,4 +17,5 @@ fn main() {
             },
         },
     };
+    let m = Engine::new();
 }

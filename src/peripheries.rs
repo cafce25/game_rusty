@@ -126,3 +126,28 @@ bitfield! {
     h, set_h: 5;
     c, set_c: 4;
 }
+
+pub struct Memory<const SIZE: usize> {
+    m: [u8; SIZE],
+}
+
+impl<const SIZE: usize> Memory<SIZE> {
+    pub fn new() -> Self {
+        Self {
+            m: [0; SIZE],
+        }
+    }
+}
+
+impl<const SIZE: usize> Index<u16> for Memory<SIZE> {
+    type Output = u8;
+    fn index(&self, idx: u16) -> &u8 {
+        &self.m[idx as usize]
+    }
+}
+
+impl<const SIZE: usize> IndexMut<u16> for Memory<SIZE> {
+    fn index_mut(&mut self, idx: u16) -> &mut u8 {
+        &mut self.m[idx as usize]
+    }
+}
