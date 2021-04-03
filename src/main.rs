@@ -1,4 +1,5 @@
 mod peripheries;
+mod instruction;
 
 fn main() {
     let m = peripheries::Cpu {

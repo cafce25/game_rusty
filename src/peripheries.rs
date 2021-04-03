@@ -1,7 +1,7 @@
 use bitfield::bitfield;
 use std::ops::{Index, IndexMut};
 
-pub enum Register8 {
+pub enum R8 {
     A = 1,
     C,
     B,
@@ -11,7 +11,7 @@ pub enum Register8 {
     H,
 }
 
-pub enum Register16 {
+pub enum R16 {
     AF = 0,
     BC,
     DE,
@@ -25,37 +25,29 @@ pub struct Cpu {
     pub r: Registers,
 }
 
-impl IndexMut<Register16> for Cpu {
-    fn index_mut(&mut self, idx: Register16) -> &mut u16 {
-        unsafe {
-            &mut self.r.r16a[idx as usize]
-        }
+impl IndexMut<R16> for Cpu {
+    fn index_mut(&mut self, idx: R16) -> &mut u16 {
+        unsafe { &mut self.r.r16a[idx as usize] }
     }
 }
 
-impl Index<Register16> for Cpu {
+impl Index<R16> for Cpu {
     type Output = u16;
-    fn index(&self, idx: Register16) -> &u16 {
-        unsafe {
-            &self.r.r16a[idx as usize]
-        }
+    fn index(&self, idx: R16) -> &u16 {
+        unsafe { &self.r.r16a[idx as usize] }
     }
 }
 
-impl IndexMut<Register8> for Cpu {
-    fn index_mut(&mut self, idx: Register8) -> &mut u8 {
-        unsafe {
-            &mut self.r.r8a[idx as usize]
-        }
+impl IndexMut<R8> for Cpu {
+    fn index_mut(&mut self, idx: R8) -> &mut u8 {
+        unsafe { &mut self.r.r8a[idx as usize] }
     }
 }
 
-impl Index<Register8> for Cpu {
+impl Index<R8> for Cpu {
     type Output = u8;
-    fn index(&self, idx: Register8) -> &u8 {
-        unsafe {
-            &self.r.r8a[idx as usize]
-        }
+    fn index(&self, idx: R8) -> &u8 {
+        unsafe { &self.r.r8a[idx as usize] }
     }
 }
 
