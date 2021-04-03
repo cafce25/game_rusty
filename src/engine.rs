@@ -1,25 +1,76 @@
 use super::instruction::{Condition, Instruction as I};
 use super::peripheries::{Cpu, Memory, R16, R8};
 
-pub struct Engine<const MEM: usize, const V_MEM: usize> {
+pub struct Engine<const MEM: usize> {
     cpu: Cpu,
     mem: Memory<MEM>,
-    vmem: Memory<V_MEM>,
 }
 
-impl<const MEM: usize, const V_MEM: usize> Engine<MEM, V_MEM> {
+impl<const MEM: usize> Engine<MEM> {
     pub fn new() -> Self {
         Self {
             cpu: Cpu::new(),
             mem: Memory::<MEM>::new(),
-            vmem: Memory::<V_MEM>::new(),
         }
+    }
+
+    /// advance the machine one step
+    pub fn update(&mut self) {
+        let instruction = self.next_instruction();
+        match instruction {
+            I::LD_R_R(t, s) => self.cpu[t] = self.cpu[s],
+            I::LD_R_N(t, s) => self.cpu[t] = s,
+            I::LD_iR16_R(t, s) => self.mem[self.cpu[t]] = self.cpu[s],
+            I::LD_iR16_N(t, s) => self.mem[self.cpu[t]] = s,
+            I::LD_R_iR16(t, s) => self.cpu[t] = self.mem[self.cpu[s]],
+            I::LD_R_iN16(t, s) => self.cpu[t] = self.mem[s],
+            I::LD_iN_R(t, s) => self.mem[t] = self.cpu[s],
+            I::LD_R_iN(t, s) => self.cpu[t] = self.mem[s],
+            I::LDI_iR16_R(t, s) => {
+                self.mem[self.cpu[t]] = self.cpu[s];
+                self.cpu[t] += 1;
+            }
+            I::LDI_R_iR16(t, s) => {
+                self.cpu[t] = self.mem[self.cpu[s]];
+                self.cpu[s] += 1;
+            }
+            I::LDD_iR16_R(t, s) => {
+                self.mem[self.cpu[t]] = self.cpu[s];
+                self.cpu[t] -= 1;
+            }
+            I::LDD_R_iR16(t, s) => {
+                self.cpu[t] = self.mem[self.cpu[s]];
+                self.cpu[s] -= 1;
+            }
+
+            I::LD_R16_N(t, s) => self.cpu[t] = s,
+            I::LD_iN_R16(t, s) => self.write_u16(t, self.cpu[s]),
+            I::LD_R16_R16(t, s) => self.cpu[t] = self.cpu[s],
+            I::PUSH(r) => {
+                self.cpu[R16::SP] -= 2;
+                self.write_u16(self.cpu[R16::SP],  self.cpu[r]);
+            }
+            I::POP(r) => {
+                self.cpu[r] = self.read_u16(self.cpu[R16::SP]);
+                self.cpu[R16::SP] += 2;
+            }
+            _ => {unimplemented!()}
+        }
+    }
+
+    //TODO make sure read and write u16 do the correct thing (endianness)
+    fn read_u16(&mut self, addr: u16) -> u16 {
+        (self.mem[addr] as u16) << 8 | self.mem[addr + 1] as u16
+    }
+
+    fn write_u16(&mut self, addr: u16, val: u16) {
+        self.mem[addr] = (val & 0xff) as u8;
+        self.mem[addr + 1] = (val >> 8) as u8;
     }
 
     /// read immediate 16bit value from current position in memory while adjusting PC
     pub fn imm16(&mut self) -> u16 {
-        let imm =
-            (self.mem[self.cpu[R16::PC]] as u16) << 8 | self.mem[self.cpu[R16::PC] + 1] as u16;
+        let imm = self.read_u16(self.cpu[R16::PC]);
         self.cpu[R16::PC] += 2;
         imm
     }
@@ -329,9 +380,9 @@ impl<const MEM: usize, const V_MEM: usize> Engine<MEM, V_MEM> {
                 0x05 => I::SRA_iHL,
                 0x06 => I::SWAP_iHL,
                 0x07 => I::SRL_iHL,
-                0x08..=0x0f => I::BIT_N_iHL(ins&0b111),
-                0x10..=0x17 => I::RES_N_iHL(ins&0b111),
-                0x18..=0x1f => I::SET_N_iHL(ins&0b111),
+                0x08..=0x0f => I::BIT_N_iHL(ins & 0b111),
+                0x10..=0x17 => I::RES_N_iHL(ins & 0b111),
+                0x18..=0x1f => I::SET_N_iHL(ins & 0b111),
                 _ => unreachable!(),
             }
         } else {
@@ -354,9 +405,9 @@ impl<const MEM: usize, const V_MEM: usize> Engine<MEM, V_MEM> {
                 0x05 => I::SRA_R(reg),
                 0x06 => I::SWAP_R(reg),
                 0x07 => I::SRL_R(reg),
-                0x08..=0x0f => I::BIT_N_R(ins&0b111, reg),
-                0x10..=0x17 => I::RES_N_R(ins&0b111, reg),
-                0x18..=0x1f => I::SET_N_R(ins&0b111, reg),
+                0x08..=0x0f => I::BIT_N_R(ins & 0b111, reg),
+                0x10..=0x17 => I::RES_N_R(ins & 0b111, reg),
+                0x18..=0x1f => I::SET_N_R(ins & 0b111, reg),
                 _ => unreachable!(),
             }
         }
