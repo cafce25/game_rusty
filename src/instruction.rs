@@ -1,6 +1,7 @@
 use super::peripheries::{R16, R8};
 
 #[allow(non_camel_case_types)]
+#[derive(Debug, Copy, Clone)]
 pub enum Instruction {
     //8-bit load
     LD_R_R(R8, R8),
@@ -122,6 +123,7 @@ pub enum Instruction {
     RST(u8),
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum Condition {
     NZ,
     Z,

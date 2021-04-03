@@ -1,6 +1,7 @@
 use bitfield::bitfield;
 use std::ops::{Index, IndexMut};
 
+#[derive(Debug, Copy, Clone)]
 pub enum R8 {
     A = 1,
     C,
@@ -11,6 +12,7 @@ pub enum R8 {
     H,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum R16 {
     AF = 0,
     BC,
@@ -20,9 +22,95 @@ pub enum R16 {
     PC,
 }
 
+/// A struct to contain all the registers and handle the access to different combinations of bytes
+///
+/// ```
+/// use game_rusty::peripheries::{ Cpu, Registers, Registers16, R8, R16 };
+/// let mut cpu = Cpu::new();
+/// cpu[R16::AF] =  0x01a0;
+///
+/// assert_eq!(cpu[R8::A], 0x01);
+/// assert_eq!(cpu.z(), true);
+/// assert_eq!(cpu.n(), false);
+/// # assert_eq!(cpu.h(), true);
+/// # assert_eq!(cpu.c(), false);
+///
+/// # cpu[R16::BC] =  0x0203;
+/// # assert_eq!(cpu[R8::B], 0x02);
+/// # assert_eq!(cpu[R8::C], 0x03);
+///
+/// # cpu[R16::DE] =  0x0405;
+/// # assert_eq!(cpu[R8::D], 0x04);
+/// # assert_eq!(cpu[R8::E], 0x05);
+///
+/// # cpu[R16::HL] =  0x0607;
+/// # assert_eq!(cpu[R8::H], 0x06);
+/// # assert_eq!(cpu[R8::L], 0x07);
+///
+/// # cpu[R8::A] = 0x1f;
+/// cpu[R8::B] = 0xff;
+/// cpu[R8::C] = 0x2f;
+/// # cpu[R8::D] = 0x3f;
+/// # cpu[R8::E] = 0x4f;
+/// # cpu[R8::H] = 0x5f;
+/// # cpu[R8::L] = 0x6f;
+/// # assert_eq!(cpu[R16::AF], 0x1fa0);
+/// assert_eq!(cpu[R16::BC], 0xff2f);
+/// # assert_eq!(cpu[R16::DE], 0x3f4f);
+/// # assert_eq!(cpu[R16::HL], 0x5f6f);
+/// ```                         
+//// cpu[R16::AF] = 0xffff;
+//// assert_eq!(cpu[R16::AF], 0xfff0);
+//// TODO fix the low nibble of "F" not reading as 0
 #[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct Cpu {
     pub r: Registers,
+    pub i: bool,
+}
+
+impl Cpu {
+    pub fn new() -> Self {
+        Self {
+            i: false,
+            r: Registers {
+                r16: Registers16 {
+                    af: 0x0,
+                    bc: 0x0,
+                    de: 0x0,
+                    hl: 0x0,
+                    sp: 0x0,
+                    pc: 0x0,
+                },
+            },
+        }
+    }
+
+    pub fn z(&self) -> bool {
+        unsafe { self.r.f.z() }
+    }
+    pub fn n(&self) -> bool {
+        unsafe { self.r.f.n() }
+    }
+    pub fn h(&self) -> bool {
+        unsafe { self.r.f.h() }
+    }
+    pub fn c(&self) -> bool {
+        unsafe { self.r.f.c() }
+    }
+
+    pub fn set_z(&mut self, val: bool) {
+        unsafe { self.r.f.set_z(val) }
+    }
+    pub fn set_n(&mut self, val: bool) {
+        unsafe { self.r.f.set_n(val) }
+    }
+    pub fn set_h(&mut self, val: bool) {
+        unsafe { self.r.f.set_h(val) }
+    }
+    pub fn set_c(&mut self, val: bool) {
+        unsafe { self.r.f.set_c(val) }
+    }
 }
 
 impl IndexMut<R16> for Cpu {
@@ -64,7 +152,7 @@ pub union Registers {
 impl std::fmt::Debug for Registers {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         unsafe {
-            //write!(f, "{:?}{:?}", self.r8s, self.r16s)?;
+            //write!(f, "{:?}{:?}", self.r8s, self.r16a)?;
             let r16 = &self.r16;
             write!(f, "Registers: {{\n")?;
             write!(
@@ -133,9 +221,7 @@ pub struct Memory<const SIZE: usize> {
 
 impl<const SIZE: usize> Memory<SIZE> {
     pub fn new() -> Self {
-        Self {
-            m: [0; SIZE],
-        }
+        Self { m: [0; SIZE] }
     }
 }
 

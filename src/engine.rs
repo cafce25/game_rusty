@@ -1,5 +1,5 @@
 use super::instruction::{Condition, Instruction};
-use super::peripheries::{Cpu, Memory, Registers, Registers16, R16, R8};
+use super::peripheries::{Cpu, Memory, R16, R8};
 
 pub struct Engine<const MEM: usize, const V_MEM: usize> {
     cpu: Cpu,
@@ -9,27 +9,15 @@ pub struct Engine<const MEM: usize, const V_MEM: usize> {
 
 impl<const MEM: usize, const V_MEM: usize> Engine<MEM, V_MEM> {
     pub fn new() -> Self {
-        let cpu = Cpu {
-            r: Registers {
-                r16: Registers16 {
-                    af: 0x00f0,
-                    bc: 0x1234,
-                    de: 0x5678,
-                    hl: 0x9abc,
-                    sp: 0xdef0,
-                    pc: 0x1234,
-                },
-            },
-        };
-        Engine {
-            cpu,
+        Self {
+            cpu: Cpu::new(),
             mem: Memory::<MEM>::new(),
             vmem: Memory::<V_MEM>::new(),
         }
     }
 
     /// read immediate 16bit value from current position in memory while adjusting PC
-    pub fn imm16(&self) -> u16 {
+    pub fn imm16(&mut self) -> u16 {
         let imm =
             (self.mem[self.cpu[R16::PC]] as u16) << 8 | self.mem[self.cpu[R16::PC] + 1] as u16;
         self.cpu[R16::PC] += 2;
@@ -37,23 +25,23 @@ impl<const MEM: usize, const V_MEM: usize> Engine<MEM, V_MEM> {
     }
 
     /// read immediate 8bit value from current position in memory while adjusting PC
-    pub fn imm_u8(&self) -> u8 {
+    pub fn imm_u8(&mut self) -> u8 {
         let imm = self.mem[self.cpu[R16::PC]];
         self.cpu[R16::PC] += 1;
         imm
     }
 
     /// read immediate 8bit value from current position in memory while adjusting PC
-    pub fn imm_i8(&self) -> i8 {
+    pub fn imm_i8(&mut self) -> i8 {
         let imm = self.mem[self.cpu[R16::PC]];
         self.cpu[R16::PC] += 1;
         imm as i8
     }
 
     /// advances pc and returns the next instruction
-    pub fn next_instruction(&self) -> Instruction {
+    pub fn next_instruction(&mut self) -> Instruction {
         let opcode = self.mem[self.cpu[R16::PC]];
-        self.cpu.r.r16.pc += 1;
+        self.cpu[R16::PC] += 1;
         match opcode {
             0x00 => Instruction::NOP,
             0x01 => Instruction::LD_R16_N(R16::BC, self.imm16()),
@@ -312,7 +300,7 @@ impl<const MEM: usize, const V_MEM: usize> Engine<MEM, V_MEM> {
 
             0xf0 => Instruction::LD_R_iN(R8::A, 0xff00 + self.imm_u8() as u16),
             0xf1 => Instruction::POP(R16::AF),
-            0xe2 => Instruction::LD_R_iN(R8::A, 0xff00 + self.cpu[R8::C] as u16),
+            0xf2 => Instruction::LD_R_iN(R8::A, 0xff00 + self.cpu[R8::C] as u16),
             0xf3 => Instruction::DI,
             0xf4 => Instruction::NOP,
             0xf5 => Instruction::PUSH(R16::AF),
