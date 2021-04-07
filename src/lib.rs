@@ -5,52 +5,52 @@ use instruction::{Condition, Instruction as I};
 use peripherals::{Cpu, Memory, R16, R8};
 use std::ops::{Index, IndexMut};
 
-pub struct GameRusty<const MEM: usize> {
+pub struct GameRusty {
     cpu: Cpu,
-    mem: Memory<MEM>,
+    mem: Memory,
 }
 
-impl<const MEM: usize> Index<R8> for GameRusty<MEM> {
+impl Index<R8> for GameRusty {
     type Output = u8;
     fn index(&self, idx: R8) -> &u8 {
         &self.cpu[idx]
     }
 }
-impl<const MEM: usize> IndexMut<R8> for GameRusty<MEM> {
+impl IndexMut<R8> for GameRusty {
     fn index_mut(&mut self, idx: R8) -> &mut u8 {
         &mut self.cpu[idx]
     }
 }
 
-impl<const MEM: usize> Index<R16> for GameRusty<MEM> {
+impl Index<R16> for GameRusty {
     type Output = u16;
     fn index(&self, idx: R16) -> &u16 {
         &self.cpu[idx]
     }
 }
-impl<const MEM: usize> IndexMut<R16> for GameRusty<MEM> {
+impl IndexMut<R16> for GameRusty {
     fn index_mut(&mut self, idx: R16) -> &mut u16 {
         &mut self.cpu[idx]
     }
 }
 
-impl<const MEM: usize> Index<u16> for GameRusty<MEM> {
+impl Index<u16> for GameRusty {
     type Output = u8;
     fn index(&self, idx: u16) -> &u8 {
         &self.mem[idx]
     }
 }
-impl<const MEM: usize> IndexMut<u16> for GameRusty<MEM> {
+impl IndexMut<u16> for GameRusty {
     fn index_mut(&mut self, idx: u16) -> &mut u8 {
         &mut self.mem[idx]
     }
 }
 
-impl<const MEM: usize> GameRusty<MEM> {
+impl GameRusty {
     pub fn new() -> Self {
         Self {
             cpu: Cpu::new(),
-            mem: Memory::<MEM>::new(),
+            mem: Memory::new(),
         }
     }
 
@@ -895,7 +895,7 @@ mod test {
     #[test]
     fn test_ld_r_r() {
         //0x78 => I::LD_R_R(R8::A, R8::B),
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x78;
         gr[R8::B] = 0xab;
         gr.update();
@@ -905,7 +905,7 @@ mod test {
     #[test]
     fn test_ld_r_n() {
         //0x0e LD C,u8
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x0e;
         gr[1] = 0xab;
         gr.update();
@@ -915,7 +915,7 @@ mod test {
     #[test]
     fn test_ld_ir_r() {
         //0x12 LD (DE), A
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x12;
         gr[R16::DE] = 1;
         gr[R8::A] = 0xca;
@@ -926,7 +926,7 @@ mod test {
     #[test]
     fn test_ld_ir_n() {
         //0x36 LD (HL), u8
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x36;
         gr[1] = 0xca;
         gr[R16::HL] = 2;
@@ -937,7 +937,7 @@ mod test {
     #[test]
     fn test_ld_r_ir() {
         //0x7e => I::LD_R_iR16(R8::A, R16::HL),
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x7e;
         gr[1] = 0xab;
         gr[R16::HL] = 0x1;
@@ -948,7 +948,7 @@ mod test {
     #[test]
     fn test_ld_r_in() {
         //0xfa LD A, (u16)
-        let mut gr = GameRusty::<4>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xfa;
         gr[1] = 3;
         gr[2] = 0;
@@ -959,7 +959,7 @@ mod test {
     #[test]
     fn test_ld_in_r() {
         //0xea LD (u16), A
-        let mut gr = GameRusty::<4>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xea;
         gr[1] = 3;
         gr[2] = 0;
@@ -971,7 +971,7 @@ mod test {
     #[test]
     fn test_ldi_ir_r() {
         //0x22 LD (HL+), A
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x22;
         gr[R16::HL] = 1;
         gr[R8::A] = 0xca;
@@ -983,7 +983,7 @@ mod test {
     #[test]
     fn test_ldi_r_ir() {
         //0x2A LD A, (HL+)
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x2a;
         gr[1] = 0xca;
         gr[R16::HL] = 1;
@@ -995,7 +995,7 @@ mod test {
     #[test]
     fn test_ldd_ir_r() {
         //0x32 LD (HL+), A
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x32;
         gr[R16::HL] = 1;
         gr[R8::A] = 0xca;
@@ -1007,7 +1007,7 @@ mod test {
     #[test]
     fn test_ldd_r_ir() {
         //0x3a LD A, (HL-)
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x3a;
         gr[1] = 0xca;
         gr[R16::HL] = 1;
@@ -1022,7 +1022,7 @@ mod test {
     fn test_ld_r16_n() {
         //0x21 LD HL,u16
         //0x31 LD SP,u16
-        let mut gr = GameRusty::<6>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x21;
         gr[1] = 0xaf;
         gr[2] = 0xec;
@@ -1038,7 +1038,7 @@ mod test {
     #[test]
     fn test_ld_in_r16() {
         //0x08 LD (u16),SP
-        let mut gr = GameRusty::<5>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x08;
         gr[1] = 3;
         gr[2] = 0;
@@ -1051,7 +1051,7 @@ mod test {
     #[test]
     fn test_ld_r16_r16() {
         //0xf9 ld sp,hl
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xf9;
         gr[R16::HL] = 0xcafc;
         gr.update();
@@ -1061,7 +1061,7 @@ mod test {
     #[test]
     fn test_push() {
         //0xd5 PUSH DE
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xd5;
         gr[R16::SP] = 2;
         gr[R16::DE] = 0xcafc;
@@ -1074,7 +1074,7 @@ mod test {
     #[test]
     fn test_pop_af() {
         //0xc1 POP AF
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xf1;
         gr[1] = 0xfc;
         gr[2] = 0xca;
@@ -1085,7 +1085,7 @@ mod test {
     #[test]
     fn test_pop() {
         //0xc1 POP BC
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xc1;
         gr[1] = 0xfc;
         gr[2] = 0xca;
@@ -1097,7 +1097,7 @@ mod test {
     #[test]
     fn test_add_r_fitting() {
         //0x83 ADD A,E
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x83;
 
         gr[R8::A] = 0xca;
@@ -1113,7 +1113,7 @@ mod test {
     #[test]
     fn test_add_r_overflow_low() {
         //0x83 ADD A,E
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x83;
 
         gr[R8::A] = 0xca;
@@ -1129,7 +1129,7 @@ mod test {
     #[test]
     fn test_add_r_overflow_high() {
         //0x83 ADD A,E
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x83;
 
         gr[R8::A] = 0xca;
@@ -1145,7 +1145,7 @@ mod test {
     #[test]
     fn test_add_r_overflow_both() {
         //0x83 ADD A,E
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x83;
 
         gr[R8::A] = 0xca;
@@ -1161,7 +1161,7 @@ mod test {
     #[test]
     fn test_add_r_0sum() {
         //0x83 ADD A,E
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x83;
 
         gr[R8::A] = 0xff;
@@ -1177,7 +1177,7 @@ mod test {
     #[test]
     fn test_add_r_0args() {
         //0x83 ADD A,E
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x83;
 
         gr[R8::A] = 0x0;
@@ -1193,7 +1193,7 @@ mod test {
     #[test]
     fn test_add_n() {
         //0xc6 ADD A,u8
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xc6;
         gr[1] = 0xca;
         gr[R8::A] = 0x11;
@@ -1204,7 +1204,7 @@ mod test {
     #[test]
     fn test_add_ir() {
         //0x86 ADD A,(HL)
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x86;
         gr[1] = 0xca;
         gr[R8::A] = 0x11;
@@ -1216,7 +1216,7 @@ mod test {
     #[test]
     fn test_adc_r_fitting() {
         //0x8b ADC A,E
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x8b;
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x11;
@@ -1232,7 +1232,7 @@ mod test {
     #[test]
     fn test_adc_r_overflow_low() {
         //0x8b ADC A,E
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x8b;
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x1f;
@@ -1248,7 +1248,7 @@ mod test {
     #[test]
     fn test_adc_r_overflow_high() {
         //0x8b ADC A,E
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x8b;
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x41;
@@ -1264,7 +1264,7 @@ mod test {
     #[test]
     fn test_adc_r_overflow_both() {
         //0x8b ADC A,E
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x8b;
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x46;
@@ -1280,7 +1280,7 @@ mod test {
     #[test]
     fn test_adc_r_0sum() {
         //0x8b ADC A,E
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x8b;
         gr[R8::A] = 0xfe;
         gr[R8::E] = 0x01;
@@ -1296,7 +1296,7 @@ mod test {
     #[test]
     fn test_adc_n() {
         //0xce ADC A,u8
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xce;
         gr[1] = 0xca;
         gr[R8::A] = 0x11;
@@ -1308,7 +1308,7 @@ mod test {
     #[test]
     fn test_adc_ir() {
         //0x8e ADC A,(HL)
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x8e;
         gr[1] = 0xca;
         gr[R8::A] = 0x11;
@@ -1321,7 +1321,7 @@ mod test {
     #[test]
     fn test_sub_r_fitting() {
         //0x94 SUB A,H
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x94;
         gr[R8::A] = 0xca;
         gr[R8::H] = 0x11;
@@ -1336,7 +1336,7 @@ mod test {
     #[test]
     fn test_sub_r_overflow_low() {
         //0x94 SUB A,H
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x94;
         gr[R8::A] = 0xca;
         gr[R8::H] = 0x1f;
@@ -1351,7 +1351,7 @@ mod test {
     #[test]
     fn test_sub_r_overflow_high() {
         //0x94 SUB A,H
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x94;
         gr[R8::A] = 0x4f;
         gr[R8::H] = 0x5a;
@@ -1366,7 +1366,7 @@ mod test {
     #[test]
     fn test_sub_r_overflow_both() {
         //0x94 SUB A,H
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x94;
         gr[R8::A] = 0x46;
         gr[R8::H] = 0xca;
@@ -1381,7 +1381,7 @@ mod test {
     #[test]
     fn test_sub_r_0sum() {
         //0x94 SUB A,H
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x94;
         gr[R8::A] = 0xfe;
         gr[R8::H] = 0xfe;
@@ -1396,7 +1396,7 @@ mod test {
     #[test]
     fn test_sub_n() {
         //0xd6 SUB A,u8
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xd6;
         gr[1] = 0x11;
         gr[R8::A] = 0xca;
@@ -1407,7 +1407,7 @@ mod test {
     #[test]
     fn test_sub_ir() {
         //0x96 SUB A,(HL)
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x96;
         gr[1] = 0x11;
         gr[R8::A] = 0xca;
@@ -1419,7 +1419,7 @@ mod test {
     #[test]
     fn test_sbc_r_fitting() {
         //0x9d SBC A,L
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x9d;
         gr[R8::A] = 0xca;
         gr[R8::L] = 0x11;
@@ -1435,7 +1435,7 @@ mod test {
     #[test]
     fn test_sbc_r_overflow_low() {
         //0x9d SBC A,L
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x9d;
         gr[R8::A] = 0xca;
         gr[R8::L] = 0x1a;
@@ -1451,7 +1451,7 @@ mod test {
     #[test]
     fn test_sbc_r_overflow_high() {
         //0x9d SBC A,L
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x9d;
         gr[R8::A] = 0x5a;
         gr[R8::L] = 0x61;
@@ -1467,7 +1467,7 @@ mod test {
     #[test]
     fn test_sbc_r_overflow_both() {
         //0x9d SBC A,L
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x9d;
         gr[R8::A] = 0x11;
         gr[R8::L] = 0x21;
@@ -1483,7 +1483,7 @@ mod test {
     #[test]
     fn test_sbc_r_0sum() {
         //0x9d SBC A,L
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x9d;
         gr[R8::A] = 0xfe;
         gr[R8::L] = 0xfd;
@@ -1499,7 +1499,7 @@ mod test {
     #[test]
     fn test_sbc_n() {
         //0xde SBC A,u8
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xde;
         gr[1] = 0x11;
         gr[R8::A] = 0xca;
@@ -1511,7 +1511,7 @@ mod test {
     #[test]
     fn test_sbc_ir() {
         //0x9e SBC A,(HL)
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x9e;
         gr[1] = 0x11;
         gr[R8::A] = 0xca;
@@ -1524,7 +1524,7 @@ mod test {
     #[test]
     fn test_and_r() {
         //0xa0 AND A, B
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xa0;
         gr[R8::A] = 0b1010_0101;
         gr[R8::B] = 0b1001_1001;
@@ -1535,7 +1535,7 @@ mod test {
     #[test]
     fn test_and_n() {
         //0xe6 AND A, [u8]
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xe6;
         gr[1] = 0b1001_1001;
         gr[R8::A] = 0b1010_0101;
@@ -1545,7 +1545,7 @@ mod test {
     #[test]
     fn test_and_ir() {
         //0xa6 AND A, [HL]
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xa6;
         gr[R8::A] = 0b1010_0101;
         gr[1] = 0b1001_1001;
@@ -1557,7 +1557,7 @@ mod test {
     #[test]
     fn test_xor_r() {
         //0xa8 Xxor A, B
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xa8;
         gr[R8::A] = 0b1010_0101;
         gr[R8::B] = 0b1001_1001;
@@ -1567,7 +1567,7 @@ mod test {
     #[test]
     fn test_xor_n() {
         //0xee Xxor A, [u8]
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xee;
         gr[1] = 0b1001_1001;
         gr[R8::A] = 0b1010_0101;
@@ -1577,7 +1577,7 @@ mod test {
     #[test]
     fn test_xor_ir() {
         //0xae Xxor A, [HL]
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xae;
         gr[R8::A] = 0b1010_0101;
         gr[1] = 0b1001_1001;
@@ -1589,7 +1589,7 @@ mod test {
     #[test]
     fn test_or_r() {
         //0xb0 OR A, B
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xb0;
         gr[R8::A] = 0b1010_0101;
         gr[R8::B] = 0b1001_1001;
@@ -1599,7 +1599,7 @@ mod test {
     #[test]
     fn test_or_n() {
         //0xf6 OR A, [u8]
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xf6;
         gr[1] = 0b1001_1001;
         gr[R8::A] = 0b1010_0101;
@@ -1609,7 +1609,7 @@ mod test {
     #[test]
     fn test_or_ir() {
         //0xb6 OR A, [HL]
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xb6;
         gr[R8::A] = 0b1010_0101;
         gr[1] = 0b1001_1001;
@@ -1621,7 +1621,7 @@ mod test {
     #[test]
     fn test_cmp_r() {
         //0xbc CMP A,H
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xbc;
         gr[R8::A] = 0x12;
         gr[R8::H] = 0x12;
@@ -1642,7 +1642,7 @@ mod test {
     #[test]
     fn test_cmp_n() {
         //0xbc CMP A,H
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xfe;
         gr[1] = 0x12;
         gr[R8::A] = 0x12;
@@ -1663,7 +1663,7 @@ mod test {
     #[test]
     fn test_cmp_ir() {
         //0xbc CMP A,(HL)
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xbe;
         gr[1] = 0x12;
         gr[R8::A] = 0x12;
@@ -1686,7 +1686,7 @@ mod test {
     #[test]
     fn test_inc_r() {
         //0x04 INC D
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x04;
         gr[R8::B] = 0xca;
         gr.update();
@@ -1698,7 +1698,7 @@ mod test {
     #[test]
     fn test_inc_r_with_overflow() {
         //0x14 INC D
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x14;
         gr[R8::D] = 0xcf;
         gr.update();
@@ -1710,7 +1710,7 @@ mod test {
     #[test]
     fn test_inc_ir() {
         //0x34 INC (HL)
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x34;
         gr[R16::HL] = 1;
         gr[1] = 0xfc;
@@ -1723,7 +1723,7 @@ mod test {
     #[test]
     fn test_dec_r() {
         //0x25 DEC H
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x25;
         gr[R8::H] = 0xe0;
         gr.update();
@@ -1732,7 +1732,7 @@ mod test {
     #[test]
     fn test_dec_ir() {
         //0x35 dec (HL)
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x35;
         gr.update();
         assert_eq!(gr[0], 0x34);
@@ -1740,7 +1740,7 @@ mod test {
     #[test]
     fn test_daa_valid_bcd() {
         //0x27 DAA
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x27;
         gr[R8::A] = 0x93;
         gr.set_c(false);
@@ -1751,7 +1751,7 @@ mod test {
     #[test]
     fn test_daa_low_nibble_overflow() {
         //0x27 DAA
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x27;
         gr[R8::A] = 0x7a;
         gr.set_c(false);
@@ -1762,7 +1762,7 @@ mod test {
     #[test]
     fn test_daa_high_nibble_overflow() {
         //0x27 DAA
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x27;
         gr[R8::A] = 0xb3;
         gr.set_c(false);
@@ -1774,7 +1774,7 @@ mod test {
     #[test]
     fn test_cpl() {
         //0x2f CPL
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x2f;
         gr[R8::A] = 0b1010_1010;
         gr.update();
@@ -1784,7 +1784,7 @@ mod test {
     #[test]
     fn test_add_r16() {
         //0x29 ADD HL, HL
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x29;
         gr[R16::HL] = 0x3afc;
         gr.update();
@@ -1793,7 +1793,7 @@ mod test {
     #[test]
     fn test_add_r16_overflow_half() {
         //0x09 ADD HL, BC
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x09;
         gr[R16::HL] = 0x0f00;
         gr[R16::BC] = 0x0100;
@@ -1806,7 +1806,7 @@ mod test {
     #[test]
     fn test_add_r16_overflow() {
         //0x09 ADD HL, BC
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x09;
         gr[R16::HL] = 0xf000;
         gr[R16::BC] = 0x1000;
@@ -1819,7 +1819,7 @@ mod test {
     #[test]
     fn test_inc_r16() {
         //0x13 INC DE
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x13;
         gr[R16::DE] = 0xcafc;
         gr.update();
@@ -1828,7 +1828,7 @@ mod test {
     #[test]
     fn test_dec_r16() {
         //0x0b DEC BC
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x0b;
         gr[R16::BC] = 0xcafc;
         gr.update();
@@ -1836,7 +1836,7 @@ mod test {
     }
     #[test]
     fn test_add_sp_d_positive() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xe8;
         gr[1] = 0x7c;
         gr[R16::SP] = 0xca00;
@@ -1845,7 +1845,7 @@ mod test {
     }
     #[test]
     fn test_add_sp_d_negative() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xe8;
         gr[1] = 0x0fc;
         gr[R16::SP] = 0xca00;
@@ -1858,7 +1858,7 @@ mod test {
     }
     #[test]
     fn test_ld_hl_sp_d_positive() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xf8;
         gr[1] = 0b0101_1010;
         gr[R16::SP] = 0xcaa2;
@@ -1871,7 +1871,7 @@ mod test {
     }
     #[test]
     fn test_ld_hl_sp_d_negative() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xf8;
         gr[1] = 0b1101_1010;
         gr[R16::SP] = 0xca00;
@@ -1886,7 +1886,7 @@ mod test {
     //rotate and shift
     #[test]
     fn test_rlca() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x07;
         gr[1] = 0x07;
         gr[R8::A] = 0b1010_1010;
@@ -1902,7 +1902,7 @@ mod test {
     }
     #[test]
     fn test_rla() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x17;
         gr[1] = 0x17;
         gr[2] = 0x17;
@@ -1923,7 +1923,7 @@ mod test {
     }
     #[test]
     fn test_rrca() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x0f;
         gr[1] = 0x0f;
         gr[R8::A] = 0b1010_1010;
@@ -1939,7 +1939,7 @@ mod test {
     }
     #[test]
     fn test_rra() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x1f;
         gr[1] = 0x1f;
         gr[2] = 0x1f;
@@ -1961,7 +1961,7 @@ mod test {
 
     #[test]
     fn test_rlc_r() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x03;
         gr[R8::E] = 0b1000_0000;
@@ -1974,7 +1974,7 @@ mod test {
     }
     #[test]
     fn test_rlc_ihl() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x06;
         gr[2] = 0b1000_0000;
@@ -1988,7 +1988,7 @@ mod test {
     }
     #[test]
     fn test_rl_r() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x13;
         gr[R8::E] = 0b1000_0000;
@@ -2002,7 +2002,7 @@ mod test {
     }
     #[test]
     fn test_rl_ihl() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x16;
         gr[2] = 0b1000_0000;
@@ -2018,7 +2018,7 @@ mod test {
 
     #[test]
     fn test_rrc_r() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x0b;
         gr[R8::E] = 0b0001_0001;
@@ -2031,7 +2031,7 @@ mod test {
     }
     #[test]
     fn test_rrc_ihl() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x0e;
         gr[2] = 0b1000_0001;
@@ -2045,7 +2045,7 @@ mod test {
     }
     #[test]
     fn test_rr_r() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x1b;
         gr[R8::E] = 0b1000_0001;
@@ -2059,7 +2059,7 @@ mod test {
     }
     #[test]
     fn test_rr_ihl() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x1e;
         gr[2] = 0b1000_0001;
@@ -2075,7 +2075,7 @@ mod test {
 
     #[test]
     fn test_sla_r() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x23;
         gr[R8::E] = 0b1000_0001;
@@ -2088,7 +2088,7 @@ mod test {
     }
     #[test]
     fn test_sla_ihl() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x26;
         gr[2] = 0b1000_0001;
@@ -2103,7 +2103,7 @@ mod test {
 
     #[test]
     fn test_sra_r() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x2b;
         gr[R8::E] = 0b1000_0001;
@@ -2116,7 +2116,7 @@ mod test {
     }
     #[test]
     fn test_sra_ihl() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x2e;
         gr[2] = 0b1000_0001;
@@ -2131,7 +2131,7 @@ mod test {
 
     #[test]
     fn test_srl_r() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x3b;
         gr[R8::E] = 0b1000_0001;
@@ -2144,7 +2144,7 @@ mod test {
     }
     #[test]
     fn test_srl_ihl() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x3e;
         gr[2] = 0b1000_0001;
@@ -2159,7 +2159,7 @@ mod test {
 
     #[test]
     fn test_swap_r() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x33;
         gr[R8::E] = 0b1000_0001;
@@ -2172,7 +2172,7 @@ mod test {
     }
     #[test]
     fn test_swap_ihl() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x36;
         gr[2] = 0b1000_0001;
@@ -2187,7 +2187,7 @@ mod test {
 
     #[test]
     fn test_bit_n_r() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x63; //BIT 4,E
         gr[R8::E] = 0b0001_0000;
@@ -2206,7 +2206,7 @@ mod test {
     }
     #[test]
     fn test_bit_n_ihl() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0x66; //BIT 4,(HL)
         gr[2] = 0b0001_0000;
@@ -2227,7 +2227,7 @@ mod test {
 
     #[test]
     fn test_res_n_r() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0xa3; //RES 4,E
         gr[R8::E] = 0b0001_0000;
@@ -2240,7 +2240,7 @@ mod test {
     }
     #[test]
     fn test_res_n_ihl() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0xa6; //RES 4,E
         gr[2] = 0b0001_0000;
@@ -2255,7 +2255,7 @@ mod test {
 
     #[test]
     fn test_set_n_r() {
-        let mut gr = GameRusty::<2>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0xe3; //set 4,E
         gr[R8::E] = 0b0001_0000;
@@ -2268,7 +2268,7 @@ mod test {
     }
     #[test]
     fn test_set_n_ihl() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcb;
         gr[1] = 0xe6; //set 4,E
         gr[2] = 0b0001_0000;
@@ -2284,7 +2284,7 @@ mod test {
     //CPU control
     #[test]
     fn test_ccf() {
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x3f;
         gr.set_c(false);
         gr.update();
@@ -2296,7 +2296,7 @@ mod test {
 
     #[test]
     fn test_scf() {
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x37;
         gr.set_c(false);
         gr.update();
@@ -2308,7 +2308,7 @@ mod test {
 
     #[test]
     fn test_nop() {
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0;
         gr[R16::PC] = 0;
         gr.update();
@@ -2316,7 +2316,7 @@ mod test {
     }
     #[test]
     fn test_di() {
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xf3;
         gr.cpu.i = true;
         gr.update();
@@ -2324,7 +2324,7 @@ mod test {
     }
     #[test]
     fn test_ei() {
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xfb;
         gr.cpu.i = false;
         gr.update();
@@ -2334,7 +2334,7 @@ mod test {
     //jump
     #[test]
     fn test_jp_n() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xc3;
         gr[1] = 0xfc;
         gr[2] = 0xca;
@@ -2344,7 +2344,7 @@ mod test {
 
     #[test]
     fn test_jp_hl() {
-        let mut gr = GameRusty::<1>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xe9;
         gr[R16::HL] = 0xcafc;
         gr.update();
@@ -2353,7 +2353,7 @@ mod test {
 
     #[test]
     fn test_jp_c_n() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xca;
         gr[1] = 0xfc;
         gr[2] = 0xca;
@@ -2368,7 +2368,7 @@ mod test {
 
     #[test]
     fn test_jr_d() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x18;
         gr[1] = 0x4a;
         gr.update();
@@ -2381,7 +2381,7 @@ mod test {
 
     #[test]
     fn test_jr_c_d() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0x20;
         gr[1] = 0x4a;
         gr.update();
@@ -2394,7 +2394,7 @@ mod test {
     }
     #[test]
     fn test_call_n() {
-        let mut gr = GameRusty::<6>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xcd;
         gr[1] = 0xfc;
         gr[2] = 0xca;
@@ -2406,7 +2406,7 @@ mod test {
     }
     #[test]
     fn test_call_c_n() {
-        let mut gr = GameRusty::<6>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xd4; //CALL NC, u16
         gr[1] = 0xfc;
         gr[2] = 0xca;
@@ -2425,7 +2425,7 @@ mod test {
 
     #[test]
     fn test_ret() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xc9;
         gr[1] = 0xfc;
         gr[2] = 0xca;
@@ -2436,7 +2436,7 @@ mod test {
     }
     #[test]
     fn test_ret_c() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xd8;
         gr[1] = 0xfc;
         gr[2] = 0xca;
@@ -2453,7 +2453,7 @@ mod test {
     }
     #[test]
     fn test_reti() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xD9;
         gr[1] = 0xfc;
         gr[2] = 0xca;
@@ -2467,7 +2467,7 @@ mod test {
 
     #[test]
     fn test_rst() {
-        let mut gr = GameRusty::<3>::new();
+        let mut gr = GameRusty::new();
         gr[0] = 0xc7;
         gr[R16::SP] = 3;
         gr.update();
