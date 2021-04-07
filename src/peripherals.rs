@@ -25,7 +25,7 @@ pub enum R16 {
 /// A struct to contain all the registers and handle the access to different combinations of bytes
 ///
 /// ```
-/// use game_rusty::peripheries::{ Cpu, Registers, Registers16, R8, R16 };
+/// use game_rusty::peripherals::{ Cpu, Registers, Registers16, R8, R16 };
 /// let mut cpu = Cpu::new();
 /// cpu[R16::AF] =  0x01a0;
 ///
@@ -61,7 +61,7 @@ pub enum R16 {
 /// ```                         
 //// cpu[R16::AF] = 0xffff;
 //// assert_eq!(cpu[R16::AF], 0xfff0);
-//// TODO fix the low nibble of "F" not reading as 0
+//// this is not really an issue since only pop can write to AF and we work around it there
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Cpu {
@@ -86,6 +86,77 @@ impl Cpu {
         }
     }
 
+    ///and setting the flags
+    pub fn and(&mut self, b: u8) {
+        self[R8::A] &= b;
+        self.set_z(self[R8::A] == 0);
+        self.set_n(false);
+        self.set_h(true);
+        self.set_c(false);
+    }
+
+    ///xor setting the flags
+    pub fn xor(&mut self, b: u8) {
+        self[R8::A] ^= b;
+        self.set_z(self[R8::A] == 0);
+        self.set_n(false);
+        self.set_h(false);
+        self.set_c(false);
+    }
+
+    ///or setting the flags
+    pub fn or(&mut self, b: u8) {
+        self[R8::A] |= b;
+        self.set_z(self[R8::A] == 0);
+        self.set_n(false);
+        self.set_h(false);
+        self.set_c(false);
+    }
+
+    ///sub setting the flags
+    pub fn sub(&mut self, b: u8, respect_carry: bool) {
+        let a = self[R8::A];
+        let respect_carry = respect_carry && self.c();
+        let (res, borrow) = {
+            let (mut res, mut borrow) = a.overflowing_sub(b);
+            if respect_carry {
+                let (r, c1) = res.overflowing_sub(1);
+                res = r;
+                borrow |= c1;
+            }
+            (res, borrow)
+        };
+        let h = (a & 0xf) < ((b & 0xf) + if respect_carry { 1 } else { 0 });
+
+        self[R8::A] = res;
+        self.set_z(res == 0);
+        self.set_n(true);
+        self.set_c(borrow);
+        self.set_h(h);
+    }
+
+    ///add setting the flags
+    pub fn add(&mut self, b: u8, respect_carry: bool) {
+        let a = self[R8::A];
+        let respect_carry = respect_carry && self.c();
+        let (res, carry) = {
+            let (mut res, mut carry) = a.overflowing_add(b);
+            if respect_carry {
+                let (r, c1) = res.overflowing_add(1);
+                res = r;
+                carry |= c1;
+            }
+            (res, carry)
+        };
+        let h = ((a & 0xf) + (b & 0xf) + if respect_carry { 1 } else { 0 }) & 0x10 != 0;
+
+        self[R8::A] = res;
+        self.set_z(res == 0);
+        self.set_n(false);
+        self.set_c(carry);
+        self.set_h(h);
+    }
+
     pub fn z(&self) -> bool {
         unsafe { self.r.f.z() }
     }
@@ -97,6 +168,9 @@ impl Cpu {
     }
     pub fn c(&self) -> bool {
         unsafe { self.r.f.c() }
+    }
+    pub fn i(&self) -> bool {
+        self.i
     }
 
     pub fn set_z(&mut self, val: bool) {
@@ -110,6 +184,9 @@ impl Cpu {
     }
     pub fn set_c(&mut self, val: bool) {
         unsafe { self.r.f.set_c(val) }
+    }
+    pub fn set_i(&mut self, val: bool) {
+        self.i = val;
     }
 }
 
