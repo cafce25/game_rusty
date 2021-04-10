@@ -301,7 +301,6 @@ pub struct Memory {
     io_registers: [u8; 0x80],
     high_ram: [u8; 0x7f],
     ie: u8,
-    _unusable: u8,
 }
 
 impl Memory {
@@ -315,42 +314,36 @@ impl Memory {
             io_registers: [0; 0x80],
             high_ram: [0; 0x7f],
             ie: 0,
-            _unusable: 0,
         }
     }
-}
 
-impl Index<u16> for Memory {
-    type Output = u8;
-    fn index(&self, idx: u16) -> &u8 {
+    pub fn get(&self, idx: u16) -> u8 {
         match idx {
-            0x0000..=0x7fff => &self.cartridge_rom[idx as usize],
-            0x8000..=0x9fff => &self.video_ram[(idx - 0x8000) as usize],
-            0xa000..=0xbfff => &self.cartridge_ram[(idx - 0xa000) as usize],
-            0xc000..=0xdfff => &self.work_ram[(idx - 0xc000) as usize],
-            0xe000..=0xfdff => &self.work_ram[(idx - 0xe000) as usize & 0x1fff],
-            0xfe00..=0xfe9f => &self.sprite_attribute_table[(idx - 0xfe00) as usize],
-            0xfea0..=0xfeff => &self._unusable,
-            0xff00..=0xff7f => &self.io_registers[(idx - 0xff00) as usize],
-            0xff80..=0xfffe => &self.high_ram[(idx - 0xff80) as usize],
-            0xffff => &self.ie,
+            0x0000..=0x7fff => self.cartridge_rom[idx as usize],
+            0x8000..=0x9fff => self.video_ram[(idx - 0x8000) as usize],
+            0xa000..=0xbfff => self.cartridge_ram[(idx - 0xa000) as usize],
+            0xc000..=0xdfff => self.work_ram[(idx - 0xc000) as usize],
+            0xe000..=0xfdff => self.work_ram[(idx - 0xe000) as usize & 0x1fff],
+            0xfe00..=0xfe9f => self.sprite_attribute_table[(idx - 0xfe00) as usize],
+            0xfea0..=0xfeff => 0,
+            0xff00..=0xff7f => self.io_registers[(idx - 0xff00) as usize],
+            0xff80..=0xfffe => self.high_ram[(idx - 0xff80) as usize],
+            0xffff => self.ie,
         }
     }
-}
 
-impl IndexMut<u16> for Memory {
-    fn index_mut(&mut self, idx: u16) -> &mut u8 {
+    pub fn set(&mut self, idx: u16, val: u8) {
         match idx {
-            0x0000..=0x7fff => &mut self.cartridge_rom[idx as usize],
-            0x8000..=0x9fff => &mut self.video_ram[(idx - 0x8000) as usize],
-            0xa000..=0xbfff => &mut self.cartridge_ram[(idx - 0xa000) as usize],
-            0xc000..=0xdfff => &mut self.work_ram[(idx - 0xc000) as usize],
-            0xe000..=0xfdff => &mut self.work_ram[(idx - 0xe000) as usize & 0x1fff],
-            0xfe00..=0xfe9f => &mut self.sprite_attribute_table[(idx - 0xfe00) as usize],
-            0xfea0..=0xfeff => &mut self._unusable,
-            0xff00..=0xff7f => &mut self.io_registers[(idx - 0xff00) as usize],
-            0xff80..=0xfffe => &mut self.high_ram[(idx - 0xff80) as usize],
-            0xffff => &mut self.ie,
+            0x0000..=0x7fff => self.cartridge_rom[idx as usize] = val,
+            0x8000..=0x9fff => self.video_ram[(idx - 0x8000) as usize] = val,
+            0xa000..=0xbfff => self.cartridge_ram[(idx - 0xa000) as usize] = val,
+            0xc000..=0xdfff => self.work_ram[(idx - 0xc000) as usize] = val,
+            0xe000..=0xfdff => self.work_ram[(idx - 0xe000) as usize & 0x1fff] = val,
+            0xfe00..=0xfe9f => self.sprite_attribute_table[(idx - 0xfe00) as usize] = val,
+            0xfea0..=0xfeff => {},
+            0xff00..=0xff7f => self.io_registers[(idx - 0xff00) as usize] = val,
+            0xff80..=0xfffe => self.high_ram[(idx - 0xff80) as usize] = val,
+            0xffff => self.ie = val,
         }
     }
 }
