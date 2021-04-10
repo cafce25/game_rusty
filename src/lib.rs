@@ -34,18 +34,6 @@ impl IndexMut<R16> for GameRusty {
     }
 }
 
-impl Index<u16> for GameRusty {
-    type Output = u8;
-    fn index(&self, idx: u16) -> &u8 {
-        &self.mem[idx]
-    }
-}
-impl IndexMut<u16> for GameRusty {
-    fn index_mut(&mut self, idx: u16) -> &mut u8 {
-        &mut self.mem[idx]
-    }
-}
-
 impl GameRusty {
     pub fn new() -> Self {
         Self {
@@ -61,25 +49,25 @@ impl GameRusty {
             //8-bit load
             I::LD_R_R(t, s) => self[t] = self[s],
             I::LD_R_N(t, s) => self[t] = s,
-            I::LD_iR_R(t, s) => *self.indirect_mut(t) = self[s],
-            I::LD_iR_N(t, s) => *self.indirect_mut(t) = s,
-            I::LD_R_iR(t, s) => self[t] = *self.indirect(s),
-            I::LD_R_iN(t, s) => self[t] = self[s],
-            I::LD_iN_R(t, s) => self[t] = self[s],
+            I::LD_iR_R(t, s) => self.indirect_set(t, self[s]),
+            I::LD_iR_N(t, s) => self.indirect_set(t, s),
+            I::LD_R_iR(t, s) => self[t] = self.indirect(s),
+            I::LD_R_iN(t, s) => self[t] = self.mem.get(s),
+            I::LD_iN_R(t, s) => self.mem.set(t, self[s]),
             I::LDI_iR_R(t, s) => {
-                *self.indirect_mut(t) = self[s];
+                self.indirect_set(t, self[s]);
                 self[t] += 1;
             }
             I::LDI_R_iR(t, s) => {
-                self[t] = *self.indirect(s);
+                self[t] = self.indirect(s);
                 self[s] += 1;
             }
             I::LDD_iR_R(t, s) => {
-                *self.indirect_mut(t) = self[s];
+                self.indirect_set(t, self[s]);
                 self[t] -= 1;
             }
             I::LDD_R_iR(t, s) => {
-                self[t] = *self.indirect(s);
+                self[t] = self.indirect(s);
                 self[s] -= 1;
             }
 
@@ -103,29 +91,29 @@ impl GameRusty {
             //8-bit arithmetic/logic
             I::ADD_R(r) => self.cpu.add(self[r], false),
             I::ADD_N(n) => self.cpu.add(n, false),
-            I::ADD_iR(r) => self.cpu.add(*self.indirect(r), false),
+            I::ADD_iR(r) => self.cpu.add(self.indirect(r), false),
             I::ADC_R(r) => self.cpu.add(self[r], true),
             I::ADC_N(n) => self.cpu.add(n, true),
-            I::ADC_iR(r) => self.cpu.add(*self.indirect(r), true),
+            I::ADC_iR(r) => self.cpu.add(self.indirect(r), true),
 
             I::SUB_R(r) => self.cpu.sub(self[r], false),
             I::SUB_N(n) => self.cpu.sub(n, false),
-            I::SUB_iR(r) => self.cpu.sub(*self.indirect(r), false),
+            I::SUB_iR(r) => self.cpu.sub(self.indirect(r), false),
             I::SBC_R(r) => self.cpu.sub(self[r], true),
             I::SBC_N(n) => self.cpu.sub(n, true),
-            I::SBC_iR(r) => self.cpu.sub(*self.indirect(r), true),
+            I::SBC_iR(r) => self.cpu.sub(self.indirect(r), true),
 
             I::AND_R(r) => self.cpu.and(self[r]),
             I::AND_N(n) => self.cpu.and(n),
-            I::AND_iR(r) => self.cpu.and(*self.indirect(r)),
+            I::AND_iR(r) => self.cpu.and(self.indirect(r)),
 
             I::OR_R(r) => self.cpu.or(self[r]),
             I::OR_N(n) => self.cpu.or(n),
-            I::OR_iR(r) => self.cpu.or(*self.indirect(r)),
+            I::OR_iR(r) => self.cpu.or(self.indirect(r)),
 
             I::XOR_R(r) => self.cpu.xor(self[r]),
             I::XOR_N(n) => self.cpu.xor(n),
-            I::XOR_iR(r) => self.cpu.xor(*self.indirect(r)),
+            I::XOR_iR(r) => self.cpu.xor(self.indirect(r)),
             I::CMP_R(r) => {
                 let tmp = self[R8::A];
                 self.cpu.sub(self[r], false);
@@ -138,7 +126,7 @@ impl GameRusty {
             }
             I::CMP_iR(r) => {
                 let tmp = self[R8::A];
-                self.cpu.sub(*self.indirect(r), false);
+                self.cpu.sub(self.indirect(r), false);
                 self[R8::A] = tmp;
             }
 
@@ -151,12 +139,12 @@ impl GameRusty {
                 self[r] = res;
             }
             I::INC_iR(r) => {
-                let a = *self.indirect(r);
+                let a = self.indirect(r);
                 self.set_h((a & 0xf) == 0xf);
                 let res = a.wrapping_add(1);
                 self.set_z(res == 0);
                 self.set_n(false);
-                *self.indirect_mut(r) = res;
+                self.indirect_set(r, res);
             }
 
             I::DEC_R(r) => {
@@ -168,12 +156,12 @@ impl GameRusty {
                 self[r] = res;
             }
             I::DEC_iR(r) => {
-                let a = *self.indirect(r);
+                let a = self.indirect(r);
                 self.set_h((a & 0xf) == 0);
                 let res = a.wrapping_sub(1);
                 self.set_z(res == 0);
                 self.set_n(true);
-                *self.indirect_mut(r) = res;
+                self.indirect_set(r, res);
             }
 
             I::DAA => {
@@ -304,34 +292,33 @@ impl GameRusty {
             }
 
             I::RLC_iHL => {
-                let c = *self.indirect(R16::HL) >> 7;
-                self.set_z(*self.indirect(R16::HL) == 0);
+                let c = self.indirect(R16::HL) >> 7;
+                self.set_z(self.indirect(R16::HL) == 0);
                 self.set_n(false);
                 self.set_h(false);
                 self.set_c(c != 0);
-                *self.indirect_mut(R16::HL) = (*self.indirect(R16::HL) << 1) | c;
+                self.indirect_set(R16::HL, (self.indirect(R16::HL) << 1) | c);
             }
             I::RL_iHL => {
-                let c = *self.indirect(R16::HL) >> 7;
-                *self.indirect_mut(R16::HL) = (*self.indirect(R16::HL) << 1) | (self.c() as u8);
-                self.set_z(*self.indirect(R16::HL) == 0);
+                let c = self.indirect(R16::HL) >> 7;
+                self.indirect_set(R16::HL, (self.indirect(R16::HL) << 1) | (self.c() as u8));
+                self.set_z(self.indirect(R16::HL) == 0);
                 self.set_n(false);
                 self.set_h(false);
                 self.set_c(c != 0);
             }
             I::RRC_iHL => {
-                let c = *self.indirect(R16::HL) & 1;
-                *self.indirect_mut(R16::HL) = *self.indirect(R16::HL) >> 1 | c << 7;
-                self.set_z(*self.indirect(R16::HL) == 0);
+                let c = self.indirect(R16::HL) & 1;
+                self.indirect_set(R16::HL, self.indirect(R16::HL) >> 1 | c << 7);
+                self.set_z(self.indirect(R16::HL) == 0);
                 self.set_n(false);
                 self.set_h(false);
                 self.set_c(c != 0);
             }
             I::RR_iHL => {
-                let c = *self.indirect(R16::HL) & 1;
-                *self.indirect_mut(R16::HL) =
-                    (*self.indirect(R16::HL) >> 1) | ((self.c() as u8) << 7);
-                self.set_z(*self.indirect(R16::HL) == 0);
+                let c = self.indirect(R16::HL) & 1;
+                self.indirect_set(R16::HL, (self.indirect(R16::HL) >> 1) | ((self.c() as u8) << 7));
+                self.set_z(self.indirect(R16::HL) == 0);
                 self.set_n(false);
                 self.set_h(false);
                 self.set_c(c != 0);
@@ -367,30 +354,30 @@ impl GameRusty {
             }
 
             I::SLA_iHL => {
-                self.set_c(*self.indirect(R16::HL) & 0x80 != 0);
-                *self.indirect_mut(R16::HL) = *self.indirect(R16::HL) << 1;
-                self.set_z(*self.indirect(R16::HL) == 0);
+                self.set_c(self.indirect(R16::HL) & 0x80 != 0);
+                self.indirect_set(R16::HL, self.indirect(R16::HL) << 1);
+                self.set_z(self.indirect(R16::HL) == 0);
                 self.set_n(false);
                 self.set_h(false);
             }
             I::SRA_iHL => {
-                self.set_c(*self.indirect(R16::HL) & 0x01 != 0);
-                *self.indirect_mut(R16::HL) = (*self.indirect(R16::HL) as i8 >> 1) as u8;
-                self.set_z(*self.indirect(R16::HL) == 0);
+                self.set_c(self.indirect(R16::HL) & 0x01 != 0);
+                self.indirect_set(R16::HL, (self.indirect(R16::HL) as i8 >> 1) as u8);
+                self.set_z(self.indirect(R16::HL) == 0);
                 self.set_n(false);
                 self.set_h(false);
             }
             I::SRL_iHL => {
-                self.set_c(*self.indirect(R16::HL) & 0x01 != 0);
-                *self.indirect_mut(R16::HL) = *self.indirect(R16::HL) >> 1;
-                self.set_z(*self.indirect(R16::HL) == 0);
+                self.set_c(self.indirect(R16::HL) & 0x01 != 0);
+                self.indirect_set(R16::HL, self.indirect(R16::HL) >> 1);
+                self.set_z(self.indirect(R16::HL) == 0);
                 self.set_n(false);
                 self.set_h(false);
             }
             I::SWAP_iHL => {
-                *self.indirect_mut(R16::HL) =
-                    *self.indirect(R16::HL) >> 4 | *self.indirect(R16::HL) << 4;
-                self.set_z(*self.indirect(R16::HL) == 0);
+                self.indirect_set(R16::HL, 
+                    self.indirect(R16::HL) >> 4 | self.indirect(R16::HL) << 4);
+                self.set_z(self.indirect(R16::HL) == 0);
                 self.set_n(false);
                 self.set_h(false);
                 self.set_c(false);
@@ -403,14 +390,14 @@ impl GameRusty {
                 self.set_h(true);
             }
             I::BIT_N_iHL(n) => {
-                self.set_z(*self.indirect(R16::HL) & (1 << n) == 0);
+                self.set_z(self.indirect(R16::HL) & (1 << n) == 0);
                 self.set_n(false);
                 self.set_h(true);
             }
             I::SET_N_R(n, r) => self[r] |= 1 << n,
-            I::SET_N_iHL(n) => *self.indirect_mut(R16::HL) |= 1 << n,
+            I::SET_N_iHL(n) => self.indirect_set(R16::HL, self.indirect(R16::HL) | 1 << n),
             I::RES_N_R(n, r) => self[r] &= !(1 << n),
-            I::RES_N_iHL(n) => *self.indirect_mut(R16::HL) &= !(1 << n),
+            I::RES_N_iHL(n) => self.indirect_set(R16::HL, self.indirect(R16::HL) & !(1 << n)),
 
             //control
             I::CCF => {
@@ -494,13 +481,13 @@ impl GameRusty {
 
     ///read 16-bit value from memory
     fn read_u16(&mut self, addr: u16) -> u16 {
-        self[addr] as u16 | (self[addr + 1] as u16) << 8
+        self.mem.get(addr) as u16 | (self.mem.get(addr + 1) as u16) << 8
     }
 
     ///write 16-bit value to memory
     fn write_u16(&mut self, addr: u16, val: u16) {
-        self[addr] = (val & 0xff) as u8;
-        self[addr + 1] = (val >> 8) as u8;
+        self.mem.set(addr, (val & 0xff) as u8);
+        self.mem.set(addr + 1, (val >> 8) as u8);
     }
 
     /// read immediate 16bit value from current position in memory while adjusting PC
@@ -512,14 +499,14 @@ impl GameRusty {
 
     /// read immediate 8bit value from current position in memory while adjusting PC
     pub fn imm_u8(&mut self) -> u8 {
-        let imm = *self.indirect(R16::PC);
+        let imm = self.indirect(R16::PC);
         self[R16::PC] += 1;
         imm
     }
 
     /// read immediate 8bit value from current position in memory while adjusting PC
     pub fn imm_i8(&mut self) -> i8 {
-        let imm = *self.indirect(R16::PC);
+        let imm = self.indirect(R16::PC);
         self[R16::PC] += 1;
         imm as i8
     }
@@ -880,11 +867,11 @@ impl GameRusty {
         self.cpu.set_i(v);
     }
 
-    pub fn indirect(&self, idx: R16) -> &u8 {
-        &self.mem[self.cpu[idx]]
+    pub fn indirect(&self, idx: R16) -> u8 {
+        self.mem.get(self.cpu[idx])
     }
-    pub fn indirect_mut(&mut self, idx: R16) -> &mut u8 {
-        &mut self.mem[self.cpu[idx]]
+    pub fn indirect_set(&mut self, idx: R16, val: u8) {
+        self.mem.set(self.cpu[idx], val)
     }
 }
 
@@ -893,99 +880,99 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_ld_r_r() {
+    fn ld_r_r() {
         //0x78 => I::LD_R_R(R8::A, R8::B),
         let mut gr = GameRusty::new();
-        gr[0] = 0x78;
+        gr.mem.set(0, 0x78);
         gr[R8::B] = 0xab;
         gr.update();
         assert_eq!(gr[R8::A], 0xab);
     }
 
     #[test]
-    fn test_ld_r_n() {
+    fn ld_r_n() {
         //0x0e LD C,u8
         let mut gr = GameRusty::new();
-        gr[0] = 0x0e;
-        gr[1] = 0xab;
+        gr.mem.set(0, 0x0e);
+        gr.mem.set(1, 0xab);
         gr.update();
         assert_eq!(gr[R8::C], 0xab);
     }
 
     #[test]
-    fn test_ld_ir_r() {
+    fn ld_ir_r() {
         //0x12 LD (DE), A
         let mut gr = GameRusty::new();
-        gr[0] = 0x12;
+        gr.mem.set(0, 0x12);
         gr[R16::DE] = 1;
         gr[R8::A] = 0xca;
         gr.update();
-        assert_eq!(gr[1], 0xca);
+        assert_eq!(gr.mem.get(1), 0xca);
     }
 
     #[test]
-    fn test_ld_ir_n() {
+    fn ld_ir_n() {
         //0x36 LD (HL), u8
         let mut gr = GameRusty::new();
-        gr[0] = 0x36;
-        gr[1] = 0xca;
+        gr.mem.set(0, 0x36);
+        gr.mem.set(1, 0xca);
         gr[R16::HL] = 2;
         gr.update();
-        assert_eq!(gr[2], 0xca);
+        assert_eq!(gr.mem.get(2), 0xca);
     }
 
     #[test]
-    fn test_ld_r_ir() {
+    fn ld_r_ir() {
         //0x7e => I::LD_R_iR16(R8::A, R16::HL),
         let mut gr = GameRusty::new();
-        gr[0] = 0x7e;
-        gr[1] = 0xab;
+        gr.mem.set(0, 0x7e);
+        gr.mem.set(1, 0xab);
         gr[R16::HL] = 0x1;
         gr.update();
         assert_eq!(gr[R8::A], 0xab);
     }
 
     #[test]
-    fn test_ld_r_in() {
+    fn ld_r_in() {
         //0xfa LD A, (u16)
         let mut gr = GameRusty::new();
-        gr[0] = 0xfa;
-        gr[1] = 3;
-        gr[2] = 0;
-        gr[3] = 0xca;
+        gr.mem.set(0, 0xfa);
+        gr.mem.set(1, 3);
+        gr.mem.set(2, 0);
+        gr.mem.set(3, 0xca);
         gr.update();
     }
 
     #[test]
-    fn test_ld_in_r() {
+    fn ld_in_r() {
         //0xea LD (u16), A
         let mut gr = GameRusty::new();
-        gr[0] = 0xea;
-        gr[1] = 3;
-        gr[2] = 0;
+        gr.mem.set(0, 0xea);
+        gr.mem.set(1, 3);
+        gr.mem.set(2, 0);
         gr[R8::A] = 0xca;
         gr.update();
-        assert_eq!(gr[3], 0xca);
+        assert_eq!(gr.mem.get(3), 0xca);
     }
 
     #[test]
-    fn test_ldi_ir_r() {
+    fn ldi_ir_r() {
         //0x22 LD (HL+), A
         let mut gr = GameRusty::new();
-        gr[0] = 0x22;
+        gr.mem.set(0, 0x22);
         gr[R16::HL] = 1;
         gr[R8::A] = 0xca;
         gr.update();
-        assert_eq!(gr[1], 0xca);
+        assert_eq!(gr.mem.get(1), 0xca);
         assert_eq!(gr[R16::HL], 0x2);
     }
 
     #[test]
-    fn test_ldi_r_ir() {
+    fn ldi_r_ir() {
         //0x2A LD A, (HL+)
         let mut gr = GameRusty::new();
-        gr[0] = 0x2a;
-        gr[1] = 0xca;
+        gr.mem.set(0, 0x2a);
+        gr.mem.set(1, 0xca);
         gr[R16::HL] = 1;
         gr.update();
         assert_eq!(gr[R8::A], 0xca);
@@ -993,23 +980,23 @@ mod test {
     }
 
     #[test]
-    fn test_ldd_ir_r() {
+    fn ldd_ir_r() {
         //0x32 LD (HL+), A
         let mut gr = GameRusty::new();
-        gr[0] = 0x32;
+        gr.mem.set(0, 0x32);
         gr[R16::HL] = 1;
         gr[R8::A] = 0xca;
         gr.update();
-        assert_eq!(gr[1], 0xca);
+        assert_eq!(gr.mem.get(1), 0xca);
         assert_eq!(gr[R16::HL], 0);
     }
 
     #[test]
-    fn test_ldd_r_ir() {
+    fn ldd_r_ir() {
         //0x3a LD A, (HL-)
         let mut gr = GameRusty::new();
-        gr[0] = 0x3a;
-        gr[1] = 0xca;
+        gr.mem.set(0, 0x3a);
+        gr.mem.set(1, 0xca);
         gr[R16::HL] = 1;
         assert_eq!(gr[R8::A], 0);
         assert_eq!(gr[R16::HL], 1);
@@ -1019,16 +1006,16 @@ mod test {
     }
 
     #[test]
-    fn test_ld_r16_n() {
+    fn ld_r16_n() {
         //0x21 LD HL,u16
         //0x31 LD SP,u16
         let mut gr = GameRusty::new();
-        gr[0] = 0x21;
-        gr[1] = 0xaf;
-        gr[2] = 0xec;
-        gr[3] = 0x31;
-        gr[4] = 0xfc;
-        gr[5] = 0xca;
+        gr.mem.set(0, 0x21);
+        gr.mem.set(1, 0xaf);
+        gr.mem.set(2, 0xec);
+        gr.mem.set(3, 0x31);
+        gr.mem.set(4, 0xfc);
+        gr.mem.set(5, 0xca);
         gr.update();
         assert_eq!(gr[R16::HL], 0xecaf);
         gr.update();
@@ -1036,69 +1023,69 @@ mod test {
     }
 
     #[test]
-    fn test_ld_in_r16() {
+    fn ld_in_r16() {
         //0x08 LD (u16),SP
         let mut gr = GameRusty::new();
-        gr[0] = 0x08;
-        gr[1] = 3;
-        gr[2] = 0;
+        gr.mem.set(0, 0x08);
+        gr.mem.set(1, 3);
+        gr.mem.set(2, 0);
         gr[R16::SP] = 0xcafc;
         gr.update();
-        assert_eq!(gr[3], 0xfc);
-        assert_eq!(gr[4], 0xca);
+        assert_eq!(gr.mem.get(3), 0xfc);
+        assert_eq!(gr.mem.get(4), 0xca);
     }
 
     #[test]
-    fn test_ld_r16_r16() {
+    fn ld_r16_r16() {
         //0xf9 ld sp,hl
         let mut gr = GameRusty::new();
-        gr[0] = 0xf9;
+        gr.mem.set(0, 0xf9);
         gr[R16::HL] = 0xcafc;
         gr.update();
         assert_eq!(gr[R16::SP], 0xcafc);
     }
 
     #[test]
-    fn test_push() {
+    fn push() {
         //0xd5 PUSH DE
         let mut gr = GameRusty::new();
-        gr[0] = 0xd5;
+        gr.mem.set(0, 0xd5);
         gr[R16::SP] = 2;
         gr[R16::DE] = 0xcafc;
         gr.update();
-        assert_eq!(gr[0], 0xfc);
-        assert_eq!(gr[1], 0xca);
+        assert_eq!(gr.mem.get(0), 0xfc);
+        assert_eq!(gr.mem.get(1), 0xca);
         assert_eq!(gr[R16::SP], 0);
     }
 
     #[test]
-    fn test_pop_af() {
+    fn pop_af() {
         //0xc1 POP AF
         let mut gr = GameRusty::new();
-        gr[0] = 0xf1;
-        gr[1] = 0xfc;
-        gr[2] = 0xca;
+        gr.mem.set(0, 0xf1);
+        gr.mem.set(1, 0xfc);
+        gr.mem.set(2, 0xca);
         gr[R16::SP] = 1;
         gr.update();
         assert_eq!(gr[R16::AF], 0xcaf0);
     }
     #[test]
-    fn test_pop() {
+    fn pop() {
         //0xc1 POP BC
         let mut gr = GameRusty::new();
-        gr[0] = 0xc1;
-        gr[1] = 0xfc;
-        gr[2] = 0xca;
+        gr.mem.set(0, 0xc1);
+        gr.mem.set(1, 0xfc);
+        gr.mem.set(2, 0xca);
         gr[R16::SP] = 1;
         gr.update();
         assert_eq!(gr[R16::BC], 0xcafc);
     }
 
     #[test]
-    fn test_add_r_fitting() {
+    fn add_r_fitting() {
         //0x83 ADD A,E
         let mut gr = GameRusty::new();
-        gr[0] = 0x83;
+        gr.mem.set(0, 0x83);
 
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x11;
@@ -1111,10 +1098,10 @@ mod test {
     }
 
     #[test]
-    fn test_add_r_overflow_low() {
+    fn add_r_overflow_low() {
         //0x83 ADD A,E
         let mut gr = GameRusty::new();
-        gr[0] = 0x83;
+        gr.mem.set(0, 0x83);
 
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x1f;
@@ -1127,10 +1114,10 @@ mod test {
     }
 
     #[test]
-    fn test_add_r_overflow_high() {
+    fn add_r_overflow_high() {
         //0x83 ADD A,E
         let mut gr = GameRusty::new();
-        gr[0] = 0x83;
+        gr.mem.set(0, 0x83);
 
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x41;
@@ -1143,10 +1130,10 @@ mod test {
     }
 
     #[test]
-    fn test_add_r_overflow_both() {
+    fn add_r_overflow_both() {
         //0x83 ADD A,E
         let mut gr = GameRusty::new();
-        gr[0] = 0x83;
+        gr.mem.set(0, 0x83);
 
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x46;
@@ -1159,10 +1146,10 @@ mod test {
     }
 
     #[test]
-    fn test_add_r_0sum() {
+    fn add_r_0sum() {
         //0x83 ADD A,E
         let mut gr = GameRusty::new();
-        gr[0] = 0x83;
+        gr.mem.set(0, 0x83);
 
         gr[R8::A] = 0xff;
         gr[R8::E] = 0x01;
@@ -1175,10 +1162,10 @@ mod test {
     }
 
     #[test]
-    fn test_add_r_0args() {
+    fn add_r_0args() {
         //0x83 ADD A,E
         let mut gr = GameRusty::new();
-        gr[0] = 0x83;
+        gr.mem.set(0, 0x83);
 
         gr[R8::A] = 0x0;
         gr[R8::E] = 0x0;
@@ -1191,22 +1178,22 @@ mod test {
     }
 
     #[test]
-    fn test_add_n() {
+    fn add_n() {
         //0xc6 ADD A,u8
         let mut gr = GameRusty::new();
-        gr[0] = 0xc6;
-        gr[1] = 0xca;
+        gr.mem.set(0, 0xc6);
+        gr.mem.set(1, 0xca);
         gr[R8::A] = 0x11;
         gr.update();
         assert_eq!(gr[R8::A], 0xdb);
     }
 
     #[test]
-    fn test_add_ir() {
+    fn add_ir() {
         //0x86 ADD A,(HL)
         let mut gr = GameRusty::new();
-        gr[0] = 0x86;
-        gr[1] = 0xca;
+        gr.mem.set(0, 0x86);
+        gr.mem.set(1, 0xca);
         gr[R8::A] = 0x11;
         gr[R16::HL] = 1;
         gr.update();
@@ -1214,10 +1201,10 @@ mod test {
     }
 
     #[test]
-    fn test_adc_r_fitting() {
+    fn adc_r_fitting() {
         //0x8b ADC A,E
         let mut gr = GameRusty::new();
-        gr[0] = 0x8b;
+        gr.mem.set(0, 0x8b);
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x11;
         gr.set_c(true);
@@ -1230,10 +1217,10 @@ mod test {
     }
 
     #[test]
-    fn test_adc_r_overflow_low() {
+    fn adc_r_overflow_low() {
         //0x8b ADC A,E
         let mut gr = GameRusty::new();
-        gr[0] = 0x8b;
+        gr.mem.set(0, 0x8b);
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x1f;
         gr.set_c(true);
@@ -1246,10 +1233,10 @@ mod test {
     }
 
     #[test]
-    fn test_adc_r_overflow_high() {
+    fn adc_r_overflow_high() {
         //0x8b ADC A,E
         let mut gr = GameRusty::new();
-        gr[0] = 0x8b;
+        gr.mem.set(0, 0x8b);
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x41;
         gr.set_c(true);
@@ -1262,10 +1249,10 @@ mod test {
     }
 
     #[test]
-    fn test_adc_r_overflow_both() {
+    fn adc_r_overflow_both() {
         //0x8b ADC A,E
         let mut gr = GameRusty::new();
-        gr[0] = 0x8b;
+        gr.mem.set(0, 0x8b);
         gr[R8::A] = 0xca;
         gr[R8::E] = 0x46;
         gr.set_c(true);
@@ -1278,10 +1265,10 @@ mod test {
     }
 
     #[test]
-    fn test_adc_r_0sum() {
+    fn adc_r_0sum() {
         //0x8b ADC A,E
         let mut gr = GameRusty::new();
-        gr[0] = 0x8b;
+        gr.mem.set(0, 0x8b);
         gr[R8::A] = 0xfe;
         gr[R8::E] = 0x01;
         gr.set_c(true);
@@ -1294,11 +1281,11 @@ mod test {
     }
 
     #[test]
-    fn test_adc_n() {
+    fn adc_n() {
         //0xce ADC A,u8
         let mut gr = GameRusty::new();
-        gr[0] = 0xce;
-        gr[1] = 0xca;
+        gr.mem.set(0, 0xce);
+        gr.mem.set(1, 0xca);
         gr[R8::A] = 0x11;
         gr.set_c(true);
         gr.update();
@@ -1306,11 +1293,11 @@ mod test {
     }
 
     #[test]
-    fn test_adc_ir() {
+    fn adc_ir() {
         //0x8e ADC A,(HL)
         let mut gr = GameRusty::new();
-        gr[0] = 0x8e;
-        gr[1] = 0xca;
+        gr.mem.set(0, 0x8e);
+        gr.mem.set(1, 0xca);
         gr[R8::A] = 0x11;
         gr[R16::HL] = 1;
         gr.set_c(true);
@@ -1319,10 +1306,10 @@ mod test {
     }
 
     #[test]
-    fn test_sub_r_fitting() {
+    fn sub_r_fitting() {
         //0x94 SUB A,H
         let mut gr = GameRusty::new();
-        gr[0] = 0x94;
+        gr.mem.set(0, 0x94);
         gr[R8::A] = 0xca;
         gr[R8::H] = 0x11;
         gr.update();
@@ -1334,10 +1321,10 @@ mod test {
     }
 
     #[test]
-    fn test_sub_r_overflow_low() {
+    fn sub_r_overflow_low() {
         //0x94 SUB A,H
         let mut gr = GameRusty::new();
-        gr[0] = 0x94;
+        gr.mem.set(0, 0x94);
         gr[R8::A] = 0xca;
         gr[R8::H] = 0x1f;
         gr.update();
@@ -1349,10 +1336,10 @@ mod test {
     }
 
     #[test]
-    fn test_sub_r_overflow_high() {
+    fn sub_r_overflow_high() {
         //0x94 SUB A,H
         let mut gr = GameRusty::new();
-        gr[0] = 0x94;
+        gr.mem.set(0, 0x94);
         gr[R8::A] = 0x4f;
         gr[R8::H] = 0x5a;
         gr.update();
@@ -1364,10 +1351,10 @@ mod test {
     }
 
     #[test]
-    fn test_sub_r_overflow_both() {
+    fn sub_r_overflow_both() {
         //0x94 SUB A,H
         let mut gr = GameRusty::new();
-        gr[0] = 0x94;
+        gr.mem.set(0, 0x94);
         gr[R8::A] = 0x46;
         gr[R8::H] = 0xca;
         gr.update();
@@ -1379,10 +1366,10 @@ mod test {
     }
 
     #[test]
-    fn test_sub_r_0sum() {
+    fn sub_r_0sum() {
         //0x94 SUB A,H
         let mut gr = GameRusty::new();
-        gr[0] = 0x94;
+        gr.mem.set(0, 0x94);
         gr[R8::A] = 0xfe;
         gr[R8::H] = 0xfe;
         gr.update();
@@ -1394,22 +1381,22 @@ mod test {
     }
 
     #[test]
-    fn test_sub_n() {
+    fn sub_n() {
         //0xd6 SUB A,u8
         let mut gr = GameRusty::new();
-        gr[0] = 0xd6;
-        gr[1] = 0x11;
+        gr.mem.set(0, 0xd6);
+        gr.mem.set(1, 0x11);
         gr[R8::A] = 0xca;
         gr.update();
         assert_eq!(gr[R8::A], 0xb9);
     }
 
     #[test]
-    fn test_sub_ir() {
+    fn sub_ir() {
         //0x96 SUB A,(HL)
         let mut gr = GameRusty::new();
-        gr[0] = 0x96;
-        gr[1] = 0x11;
+        gr.mem.set(0, 0x96);
+        gr.mem.set(1, 0x11);
         gr[R8::A] = 0xca;
         gr[R16::HL] = 1;
         gr.update();
@@ -1417,10 +1404,10 @@ mod test {
     }
 
     #[test]
-    fn test_sbc_r_fitting() {
+    fn sbc_r_fitting() {
         //0x9d SBC A,L
         let mut gr = GameRusty::new();
-        gr[0] = 0x9d;
+        gr.mem.set(0, 0x9d);
         gr[R8::A] = 0xca;
         gr[R8::L] = 0x11;
         gr.set_c(true);
@@ -1433,10 +1420,10 @@ mod test {
     }
 
     #[test]
-    fn test_sbc_r_overflow_low() {
+    fn sbc_r_overflow_low() {
         //0x9d SBC A,L
         let mut gr = GameRusty::new();
-        gr[0] = 0x9d;
+        gr.mem.set(0, 0x9d);
         gr[R8::A] = 0xca;
         gr[R8::L] = 0x1a;
         gr.set_c(true);
@@ -1449,10 +1436,10 @@ mod test {
     }
 
     #[test]
-    fn test_sbc_r_overflow_high() {
+    fn sbc_r_overflow_high() {
         //0x9d SBC A,L
         let mut gr = GameRusty::new();
-        gr[0] = 0x9d;
+        gr.mem.set(0, 0x9d);
         gr[R8::A] = 0x5a;
         gr[R8::L] = 0x61;
         gr.set_c(true);
@@ -1465,10 +1452,10 @@ mod test {
     }
 
     #[test]
-    fn test_sbc_r_overflow_both() {
+    fn sbc_r_overflow_both() {
         //0x9d SBC A,L
         let mut gr = GameRusty::new();
-        gr[0] = 0x9d;
+        gr.mem.set(0, 0x9d);
         gr[R8::A] = 0x11;
         gr[R8::L] = 0x21;
         gr.set_c(true);
@@ -1481,10 +1468,10 @@ mod test {
     }
 
     #[test]
-    fn test_sbc_r_0sum() {
+    fn sbc_r_0sum() {
         //0x9d SBC A,L
         let mut gr = GameRusty::new();
-        gr[0] = 0x9d;
+        gr.mem.set(0, 0x9d);
         gr[R8::A] = 0xfe;
         gr[R8::L] = 0xfd;
         gr.set_c(true);
@@ -1497,11 +1484,11 @@ mod test {
     }
 
     #[test]
-    fn test_sbc_n() {
+    fn sbc_n() {
         //0xde SBC A,u8
         let mut gr = GameRusty::new();
-        gr[0] = 0xde;
-        gr[1] = 0x11;
+        gr.mem.set(0, 0xde);
+        gr.mem.set(1, 0x11);
         gr[R8::A] = 0xca;
         gr.set_c(true);
         gr.update();
@@ -1509,11 +1496,11 @@ mod test {
     }
 
     #[test]
-    fn test_sbc_ir() {
+    fn sbc_ir() {
         //0x9e SBC A,(HL)
         let mut gr = GameRusty::new();
-        gr[0] = 0x9e;
-        gr[1] = 0x11;
+        gr.mem.set(0, 0x9e);
+        gr.mem.set(1, 0x11);
         gr[R8::A] = 0xca;
         gr[R16::HL] = 1;
         gr.set_c(true);
@@ -1522,10 +1509,10 @@ mod test {
     }
 
     #[test]
-    fn test_and_r() {
+    fn and_r() {
         //0xa0 AND A, B
         let mut gr = GameRusty::new();
-        gr[0] = 0xa0;
+        gr.mem.set(0, 0xa0);
         gr[R8::A] = 0b1010_0101;
         gr[R8::B] = 0b1001_1001;
         gr.update();
@@ -1533,96 +1520,96 @@ mod test {
     }
 
     #[test]
-    fn test_and_n() {
+    fn and_n() {
         //0xe6 AND A, [u8]
         let mut gr = GameRusty::new();
-        gr[0] = 0xe6;
-        gr[1] = 0b1001_1001;
+        gr.mem.set(0, 0xe6);
+        gr.mem.set(1, 0b1001_1001);
         gr[R8::A] = 0b1010_0101;
         gr.update();
         assert_eq!(gr[R8::A], 0b1000_0001);
     }
     #[test]
-    fn test_and_ir() {
+    fn and_ir() {
         //0xa6 AND A, [HL]
         let mut gr = GameRusty::new();
-        gr[0] = 0xa6;
+        gr.mem.set(0, 0xa6);
         gr[R8::A] = 0b1010_0101;
-        gr[1] = 0b1001_1001;
+        gr.mem.set(1, 0b1001_1001);
         gr[R16::HL] = 1;
         gr.update();
         assert_eq!(gr[R8::A], 0b1000_0001);
     }
 
     #[test]
-    fn test_xor_r() {
+    fn xor_r() {
         //0xa8 Xxor A, B
         let mut gr = GameRusty::new();
-        gr[0] = 0xa8;
+        gr.mem.set(0, 0xa8);
         gr[R8::A] = 0b1010_0101;
         gr[R8::B] = 0b1001_1001;
         gr.update();
         assert_eq!(gr[R8::A], 0b0011_1100);
     }
     #[test]
-    fn test_xor_n() {
+    fn xor_n() {
         //0xee Xxor A, [u8]
         let mut gr = GameRusty::new();
-        gr[0] = 0xee;
-        gr[1] = 0b1001_1001;
+        gr.mem.set(0, 0xee);
+        gr.mem.set(1, 0b1001_1001);
         gr[R8::A] = 0b1010_0101;
         gr.update();
         assert_eq!(gr[R8::A], 0b0011_1100);
     }
     #[test]
-    fn test_xor_ir() {
+    fn xor_ir() {
         //0xae Xxor A, [HL]
         let mut gr = GameRusty::new();
-        gr[0] = 0xae;
+        gr.mem.set(0, 0xae);
         gr[R8::A] = 0b1010_0101;
-        gr[1] = 0b1001_1001;
+        gr.mem.set(1, 0b1001_1001);
         gr[R16::HL] = 1;
         gr.update();
         assert_eq!(gr[R8::A], 0b0011_1100);
     }
 
     #[test]
-    fn test_or_r() {
+    fn or_r() {
         //0xb0 OR A, B
         let mut gr = GameRusty::new();
-        gr[0] = 0xb0;
+        gr.mem.set(0, 0xb0);
         gr[R8::A] = 0b1010_0101;
         gr[R8::B] = 0b1001_1001;
         gr.update();
         assert_eq!(gr[R8::A], 0b1011_1101);
     }
     #[test]
-    fn test_or_n() {
+    fn or_n() {
         //0xf6 OR A, [u8]
         let mut gr = GameRusty::new();
-        gr[0] = 0xf6;
-        gr[1] = 0b1001_1001;
+        gr.mem.set(0, 0xf6);
+        gr.mem.set(1, 0b1001_1001);
         gr[R8::A] = 0b1010_0101;
         gr.update();
         assert_eq!(gr[R8::A], 0b1011_1101);
     }
     #[test]
-    fn test_or_ir() {
+    fn or_ir() {
         //0xb6 OR A, [HL]
         let mut gr = GameRusty::new();
-        gr[0] = 0xb6;
+        gr.mem.set(0, 0xb6);
         gr[R8::A] = 0b1010_0101;
-        gr[1] = 0b1001_1001;
+        gr.mem.set(1, 0b1001_1001);
         gr[R16::HL] = 1;
         gr.update();
         assert_eq!(gr[R8::A], 0b1011_1101);
     }
 
     #[test]
-    fn test_cmp_r() {
+    fn cmp_r() {
         //0xbc CMP A,H
         let mut gr = GameRusty::new();
-        gr[0] = 0xbc;
+        gr.mem.set(0, 0xbc);
         gr[R8::A] = 0x12;
         gr[R8::H] = 0x12;
         gr.update();
@@ -1640,11 +1627,11 @@ mod test {
         assert_eq!(gr.c(), true);
     }
     #[test]
-    fn test_cmp_n() {
+    fn cmp_n() {
         //0xbc CMP A,H
         let mut gr = GameRusty::new();
-        gr[0] = 0xfe;
-        gr[1] = 0x12;
+        gr.mem.set(0, 0xfe);
+        gr.mem.set(1, 0x12);
         gr[R8::A] = 0x12;
         gr.update();
         assert_eq!(gr[R8::A], 0x12);
@@ -1653,7 +1640,7 @@ mod test {
         assert_eq!(gr.h(), false);
         assert_eq!(gr.c(), false);
         gr[R16::PC] = 0;
-        gr[1] = 0x23;
+        gr.mem.set(1, 0x23);
         gr.update();
         assert_eq!(gr.z(), false);
         assert_eq!(gr.n(), true);
@@ -1661,11 +1648,11 @@ mod test {
         assert_eq!(gr.c(), true);
     }
     #[test]
-    fn test_cmp_ir() {
+    fn cmp_ir() {
         //0xbc CMP A,(HL)
         let mut gr = GameRusty::new();
-        gr[0] = 0xbe;
-        gr[1] = 0x12;
+        gr.mem.set(0, 0xbe);
+        gr.mem.set(1, 0x12);
         gr[R8::A] = 0x12;
         gr[R16::HL] = 1;
         gr.update();
@@ -1675,7 +1662,7 @@ mod test {
         assert_eq!(gr.h(), false);
         assert_eq!(gr.c(), false);
         gr[R16::PC] = 0;
-        gr[1] = 0x23;
+        gr.mem.set(1, 0x23);
         gr.update();
         assert_eq!(gr.z(), false);
         assert_eq!(gr.n(), true);
@@ -1684,10 +1671,10 @@ mod test {
     }
 
     #[test]
-    fn test_inc_r() {
+    fn inc_r() {
         //0x04 INC D
         let mut gr = GameRusty::new();
-        gr[0] = 0x04;
+        gr.mem.set(0, 0x04);
         gr[R8::B] = 0xca;
         gr.update();
         assert_eq!(gr[R8::B], 0xcb);
@@ -1696,10 +1683,10 @@ mod test {
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_inc_r_with_overflow() {
+    fn inc_r_with_overflow() {
         //0x14 INC D
         let mut gr = GameRusty::new();
-        gr[0] = 0x14;
+        gr.mem.set(0, 0x14);
         gr[R8::D] = 0xcf;
         gr.update();
         assert_eq!(gr[R8::D], 0xd0);
@@ -1708,40 +1695,40 @@ mod test {
         assert_eq!(gr.h(), true);
     }
     #[test]
-    fn test_inc_ir() {
+    fn inc_ir() {
         //0x34 INC (HL)
         let mut gr = GameRusty::new();
-        gr[0] = 0x34;
+        gr.mem.set(0, 0x34);
         gr[R16::HL] = 1;
-        gr[1] = 0xfc;
+        gr.mem.set(1, 0xfc);
         gr.update();
-        assert_eq!(gr[1], 0xfd);
+        assert_eq!(gr.mem.get(1), 0xfd);
         assert_eq!(gr.z(), false);
         assert_eq!(gr.n(), false);
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_dec_r() {
+    fn dec_r() {
         //0x25 DEC H
         let mut gr = GameRusty::new();
-        gr[0] = 0x25;
+        gr.mem.set(0, 0x25);
         gr[R8::H] = 0xe0;
         gr.update();
         assert_eq!(gr[R8::H], 0xdf);
     }
     #[test]
-    fn test_dec_ir() {
+    fn dec_ir() {
         //0x35 dec (HL)
         let mut gr = GameRusty::new();
-        gr[0] = 0x35;
+        gr.mem.set(0, 0x35);
         gr.update();
-        assert_eq!(gr[0], 0x34);
+        assert_eq!(gr.mem.get(0), 0x34);
     }
     #[test]
-    fn test_daa_valid_bcd() {
+    fn daa_valid_bcd() {
         //0x27 DAA
         let mut gr = GameRusty::new();
-        gr[0] = 0x27;
+        gr.mem.set(0, 0x27);
         gr[R8::A] = 0x93;
         gr.set_c(false);
         gr.set_h(false);
@@ -1749,10 +1736,10 @@ mod test {
         assert_eq!(gr[R8::A], 0x93);
     }
     #[test]
-    fn test_daa_low_nibble_overflow() {
+    fn daa_low_nibble_overflow() {
         //0x27 DAA
         let mut gr = GameRusty::new();
-        gr[0] = 0x27;
+        gr.mem.set(0, 0x27);
         gr[R8::A] = 0x7a;
         gr.set_c(false);
         gr.set_h(false);
@@ -1760,10 +1747,10 @@ mod test {
         assert_eq!(gr[R8::A], 0x80);
     }
     #[test]
-    fn test_daa_high_nibble_overflow() {
+    fn daa_high_nibble_overflow() {
         //0x27 DAA
         let mut gr = GameRusty::new();
-        gr[0] = 0x27;
+        gr.mem.set(0, 0x27);
         gr[R8::A] = 0xb3;
         gr.set_c(false);
         gr.set_h(false);
@@ -1772,29 +1759,29 @@ mod test {
         assert_eq!(gr.c(), true)
     }
     #[test]
-    fn test_cpl() {
+    fn cpl() {
         //0x2f CPL
         let mut gr = GameRusty::new();
-        gr[0] = 0x2f;
+        gr.mem.set(0, 0x2f);
         gr[R8::A] = 0b1010_1010;
         gr.update();
         assert_eq!(gr[R8::A], 0b0101_0101);
     }
 
     #[test]
-    fn test_add_r16() {
+    fn add_r16() {
         //0x29 ADD HL, HL
         let mut gr = GameRusty::new();
-        gr[0] = 0x29;
+        gr.mem.set(0, 0x29);
         gr[R16::HL] = 0x3afc;
         gr.update();
         assert_eq!(gr[R16::HL], 0x75f8);
     }
     #[test]
-    fn test_add_r16_overflow_half() {
+    fn add_r16_overflow_half() {
         //0x09 ADD HL, BC
         let mut gr = GameRusty::new();
-        gr[0] = 0x09;
+        gr.mem.set(0, 0x09);
         gr[R16::HL] = 0x0f00;
         gr[R16::BC] = 0x0100;
         gr.update();
@@ -1804,10 +1791,10 @@ mod test {
         assert_eq!(gr.n(), false);
     }
     #[test]
-    fn test_add_r16_overflow() {
+    fn add_r16_overflow() {
         //0x09 ADD HL, BC
         let mut gr = GameRusty::new();
-        gr[0] = 0x09;
+        gr.mem.set(0, 0x09);
         gr[R16::HL] = 0xf000;
         gr[R16::BC] = 0x1000;
         gr.update();
@@ -1817,37 +1804,37 @@ mod test {
         assert_eq!(gr.n(), false);
     }
     #[test]
-    fn test_inc_r16() {
+    fn inc_r16() {
         //0x13 INC DE
         let mut gr = GameRusty::new();
-        gr[0] = 0x13;
+        gr.mem.set(0, 0x13);
         gr[R16::DE] = 0xcafc;
         gr.update();
         assert_eq!(gr[R16::DE], 0xcafd);
     }
     #[test]
-    fn test_dec_r16() {
+    fn dec_r16() {
         //0x0b DEC BC
         let mut gr = GameRusty::new();
-        gr[0] = 0x0b;
+        gr.mem.set(0, 0x0b);
         gr[R16::BC] = 0xcafc;
         gr.update();
         assert_eq!(gr[R16::BC], 0xcafb);
     }
     #[test]
-    fn test_add_sp_d_positive() {
+    fn add_sp_d_positive() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xe8;
-        gr[1] = 0x7c;
+        gr.mem.set(0, 0xe8);
+        gr.mem.set(1, 0x7c);
         gr[R16::SP] = 0xca00;
         gr.update();
         assert_eq!(gr[R16::SP], 0xca7c);
     }
     #[test]
-    fn test_add_sp_d_negative() {
+    fn add_sp_d_negative() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xe8;
-        gr[1] = 0x0fc;
+        gr.mem.set(0, 0xe8);
+        gr.mem.set(1, 0x0fc);
         gr[R16::SP] = 0xca00;
         gr.update();
         assert_eq!(gr[R16::SP], 0xc9fc);
@@ -1857,10 +1844,10 @@ mod test {
         assert_eq!(gr.c(), true);
     }
     #[test]
-    fn test_ld_hl_sp_d_positive() {
+    fn ld_hl_sp_d_positive() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xf8;
-        gr[1] = 0b0101_1010;
+        gr.mem.set(0, 0xf8);
+        gr.mem.set(1, 0b0101_1010);
         gr[R16::SP] = 0xcaa2;
         gr.update();
         assert_eq!(gr[R16::HL], 0xcafc);
@@ -1870,10 +1857,10 @@ mod test {
         assert_eq!(gr.c(), false);
     }
     #[test]
-    fn test_ld_hl_sp_d_negative() {
+    fn ld_hl_sp_d_negative() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xf8;
-        gr[1] = 0b1101_1010;
+        gr.mem.set(0, 0xf8);
+        gr.mem.set(1, 0b1101_1010);
         gr[R16::SP] = 0xca00;
         gr.update();
         assert_eq!(gr[R16::HL], 0xc9da);
@@ -1885,10 +1872,10 @@ mod test {
 
     //rotate and shift
     #[test]
-    fn test_rlca() {
+    fn rlca() {
         let mut gr = GameRusty::new();
-        gr[0] = 0x07;
-        gr[1] = 0x07;
+        gr.mem.set(0, 0x07);
+        gr.mem.set(1, 0x07);
         gr[R8::A] = 0b1010_1010;
         gr.update();
         assert_eq!(gr[R8::A], 0b0101_0101);
@@ -1901,11 +1888,11 @@ mod test {
         assert_eq!(gr.c(), false);
     }
     #[test]
-    fn test_rla() {
+    fn rla() {
         let mut gr = GameRusty::new();
-        gr[0] = 0x17;
-        gr[1] = 0x17;
-        gr[2] = 0x17;
+        gr.mem.set(0, 0x17);
+        gr.mem.set(1, 0x17);
+        gr.mem.set(2, 0x17);
         gr[R8::A] = 0b0101_0101;
         gr.set_c(true);
         gr.update();
@@ -1922,10 +1909,10 @@ mod test {
         assert_eq!(gr.c(), false);
     }
     #[test]
-    fn test_rrca() {
+    fn rrca() {
         let mut gr = GameRusty::new();
-        gr[0] = 0x0f;
-        gr[1] = 0x0f;
+        gr.mem.set(0, 0x0f);
+        gr.mem.set(1, 0x0f);
         gr[R8::A] = 0b1010_1010;
         gr.update();
         assert_eq!(gr[R8::A], 0b0101_0101);
@@ -1938,11 +1925,11 @@ mod test {
         assert_eq!(gr.c(), true);
     }
     #[test]
-    fn test_rra() {
+    fn rra() {
         let mut gr = GameRusty::new();
-        gr[0] = 0x1f;
-        gr[1] = 0x1f;
-        gr[2] = 0x1f;
+        gr.mem.set(0, 0x1f);
+        gr.mem.set(1, 0x1f);
+        gr.mem.set(2, 0x1f);
         gr[R8::A] = 0b0101_0101;
         gr.set_c(true);
         gr.update();
@@ -1960,10 +1947,10 @@ mod test {
     }
 
     #[test]
-    fn test_rlc_r() {
+    fn rlc_r() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x03;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x03);
         gr[R8::E] = 0b1000_0000;
         gr.update();
         assert_eq!(gr[R8::E], 0b0000_0001);
@@ -1973,24 +1960,24 @@ mod test {
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_rlc_ihl() {
+    fn rlc_ihl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x06;
-        gr[2] = 0b1000_0000;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x06);
+        gr.mem.set(2, 0b1000_0000);
         gr[R16::HL] = 2;
         gr.update();
-        assert_eq!(gr[2], 0b0000_0001);
+        assert_eq!(gr.mem.get(2), 0b0000_0001);
         assert_eq!(gr.c(), true);
         assert_eq!(gr.z(), false);
         assert_eq!(gr.n(), false);
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_rl_r() {
+    fn rl_r() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x13;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x13);
         gr[R8::E] = 0b1000_0000;
         gr.set_c(false);
         gr.update();
@@ -2001,15 +1988,15 @@ mod test {
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_rl_ihl() {
+    fn rl_ihl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x16;
-        gr[2] = 0b1000_0000;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x16);
+        gr.mem.set(2, 0b1000_0000);
         gr[R16::HL] = 2;
         gr.set_c(false);
         gr.update();
-        assert_eq!(gr[2], 0b0000_0000);
+        assert_eq!(gr.mem.get(2), 0b0000_0000);
         assert_eq!(gr.c(), true);
         assert_eq!(gr.z(), true);
         assert_eq!(gr.n(), false);
@@ -2017,10 +2004,10 @@ mod test {
     }
 
     #[test]
-    fn test_rrc_r() {
+    fn rrc_r() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x0b;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x0b);
         gr[R8::E] = 0b0001_0001;
         gr.update();
         assert_eq!(gr[R8::E], 0b1000_1000);
@@ -2030,24 +2017,24 @@ mod test {
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_rrc_ihl() {
+    fn rrc_ihl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x0e;
-        gr[2] = 0b1000_0001;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x0e);
+        gr.mem.set(2, 0b1000_0001);
         gr[R16::HL] = 2;
         gr.update();
-        assert_eq!(gr[2], 0b1100_0000);
+        assert_eq!(gr.mem.get(2), 0b1100_0000);
         assert_eq!(gr.c(), true);
         assert_eq!(gr.z(), false);
         assert_eq!(gr.n(), false);
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_rr_r() {
+    fn rr_r() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x1b;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x1b);
         gr[R8::E] = 0b1000_0001;
         gr.set_c(false);
         gr.update();
@@ -2058,15 +2045,15 @@ mod test {
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_rr_ihl() {
+    fn rr_ihl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x1e;
-        gr[2] = 0b1000_0001;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x1e);
+        gr.mem.set(2, 0b1000_0001);
         gr[R16::HL] = 2;
         gr.set_c(false);
         gr.update();
-        assert_eq!(gr[2], 0b0100_0000);
+        assert_eq!(gr.mem.get(2), 0b0100_0000);
         assert_eq!(gr.c(), true);
         assert_eq!(gr.z(), false);
         assert_eq!(gr.n(), false);
@@ -2074,10 +2061,10 @@ mod test {
     }
 
     #[test]
-    fn test_sla_r() {
+    fn sla_r() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x23;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x23);
         gr[R8::E] = 0b1000_0001;
         gr.update();
         assert_eq!(gr[R8::E], 0b0000_0010);
@@ -2087,14 +2074,14 @@ mod test {
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_sla_ihl() {
+    fn sla_ihl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x26;
-        gr[2] = 0b1000_0001;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x26);
+        gr.mem.set(2, 0b1000_0001);
         gr[R16::HL] = 2;
         gr.update();
-        assert_eq!(gr[2], 0b0000_0010);
+        assert_eq!(gr.mem.get(2), 0b0000_0010);
         assert_eq!(gr.c(), true);
         assert_eq!(gr.z(), false);
         assert_eq!(gr.n(), false);
@@ -2102,10 +2089,10 @@ mod test {
     }
 
     #[test]
-    fn test_sra_r() {
+    fn sra_r() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x2b;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x2b);
         gr[R8::E] = 0b1000_0001;
         gr.update();
         assert_eq!(gr[R8::E], 0b1100_0000);
@@ -2115,14 +2102,14 @@ mod test {
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_sra_ihl() {
+    fn sra_ihl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x2e;
-        gr[2] = 0b1000_0001;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x2e);
+        gr.mem.set(2, 0b1000_0001);
         gr[R16::HL] = 2;
         gr.update();
-        assert_eq!(gr[2], 0b1100_0000);
+        assert_eq!(gr.mem.get(2), 0b1100_0000);
         assert_eq!(gr.c(), true);
         assert_eq!(gr.z(), false);
         assert_eq!(gr.n(), false);
@@ -2130,10 +2117,10 @@ mod test {
     }
 
     #[test]
-    fn test_srl_r() {
+    fn srl_r() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x3b;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x3b);
         gr[R8::E] = 0b1000_0001;
         gr.update();
         assert_eq!(gr[R8::E], 0b0100_0000);
@@ -2143,14 +2130,14 @@ mod test {
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_srl_ihl() {
+    fn srl_ihl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x3e;
-        gr[2] = 0b1000_0001;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x3e);
+        gr.mem.set(2, 0b1000_0001);
         gr[R16::HL] = 2;
         gr.update();
-        assert_eq!(gr[2], 0b0100_0000);
+        assert_eq!(gr.mem.get(2), 0b0100_0000);
         assert_eq!(gr.c(), true);
         assert_eq!(gr.z(), false);
         assert_eq!(gr.n(), false);
@@ -2158,10 +2145,10 @@ mod test {
     }
 
     #[test]
-    fn test_swap_r() {
+    fn swap_r() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x33;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x33);
         gr[R8::E] = 0b1000_0001;
         gr.update();
         assert_eq!(gr[R8::E], 0b0001_1000);
@@ -2171,14 +2158,14 @@ mod test {
         assert_eq!(gr.h(), false);
     }
     #[test]
-    fn test_swap_ihl() {
+    fn swap_ihl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x36;
-        gr[2] = 0b1000_0001;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x36);
+        gr.mem.set(2, 0b1000_0001);
         gr[R16::HL] = 2;
         gr.update();
-        assert_eq!(gr[2], 0b0001_1000);
+        assert_eq!(gr.mem.get(2), 0b0001_1000);
         assert_eq!(gr.c(), false);
         assert_eq!(gr.z(), false);
         assert_eq!(gr.n(), false);
@@ -2186,10 +2173,10 @@ mod test {
     }
 
     #[test]
-    fn test_bit_n_r() {
+    fn bit_n_r() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x63; //BIT 4,E
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x63); //BIT 4,E
         gr[R8::E] = 0b0001_0000;
         gr.update();
         assert_eq!(gr[R8::E], 0b0001_0000);
@@ -2197,7 +2184,7 @@ mod test {
         assert_eq!(gr.n(), false);
         assert_eq!(gr.h(), true);
         gr[R16::PC] = 0;
-        gr[1] = 0x6b; //BIT 5,E
+        gr.mem.set(1, 0x6b); //BIT 5,E
         gr.update();
         assert_eq!(gr[R8::E], 0b0001_0000);
         assert_eq!(gr.z(), true);
@@ -2205,87 +2192,87 @@ mod test {
         assert_eq!(gr.h(), true);
     }
     #[test]
-    fn test_bit_n_ihl() {
+    fn bit_n_ihl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0x66; //BIT 4,(HL)
-        gr[2] = 0b0001_0000;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0x66); //BIT 4,(HL)
+        gr.mem.set(2, 0b0001_0000);
         gr[R16::HL] = 2;
         gr.update();
-        assert_eq!(gr[2], 0b0001_0000);
+        assert_eq!(gr.mem.get(2), 0b0001_0000);
         assert_eq!(gr.z(), false);
         assert_eq!(gr.n(), false);
         assert_eq!(gr.h(), true);
         gr[R16::PC] = 0;
-        gr[1] = 0x6e; //BIT 5,(HL)
+        gr.mem.set(1, 0x6e); //BIT 5,(HL)
         gr.update();
-        assert_eq!(gr[2], 0b0001_0000);
+        assert_eq!(gr.mem.get(2), 0b0001_0000);
         assert_eq!(gr.z(), true);
         assert_eq!(gr.n(), false);
         assert_eq!(gr.h(), true);
     }
 
     #[test]
-    fn test_res_n_r() {
+    fn res_n_r() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0xa3; //RES 4,E
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0xa3); //RES 4,E
         gr[R8::E] = 0b0001_0000;
         gr.update();
         assert_eq!(gr[R8::E], 0b0000_0000);
         gr[R16::PC] = 0;
-        gr[1] = 0xab; //RES 5,E
+        gr.mem.set(1, 0xab); //RES 5,E
         gr.update();
         assert_eq!(gr[R8::E], 0b0000_0000);
     }
     #[test]
-    fn test_res_n_ihl() {
+    fn res_n_ihl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0xa6; //RES 4,E
-        gr[2] = 0b0001_0000;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0xa6); //RES 4,E
+        gr.mem.set(2, 0b0001_0000);
         gr[R16::HL] = 2;
         gr.update();
-        assert_eq!(gr[2], 0b0000_0000);
+        assert_eq!(gr.mem.get(2), 0b0000_0000);
         gr[R16::PC] = 0;
-        gr[1] = 0xae; //RES 5,E
+        gr.mem.set(1, 0xae); //RES 5,E
         gr.update();
-        assert_eq!(gr[2], 0b0000_0000);
+        assert_eq!(gr.mem.get(2), 0b0000_0000);
     }
 
     #[test]
-    fn test_set_n_r() {
+    fn set_n_r() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0xe3; //set 4,E
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0xe3); //set 4,E
         gr[R8::E] = 0b0001_0000;
         gr.update();
         assert_eq!(gr[R8::E], 0b0001_0000);
         gr[R16::PC] = 0;
-        gr[1] = 0xeb; //set 5,E
+        gr.mem.set(1, 0xeb); //set 5,E
         gr.update();
         assert_eq!(gr[R8::E], 0b0011_0000);
     }
     #[test]
-    fn test_set_n_ihl() {
+    fn set_n_ihl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcb;
-        gr[1] = 0xe6; //set 4,E
-        gr[2] = 0b0001_0000;
+        gr.mem.set(0, 0xcb);
+        gr.mem.set(1, 0xe6); //set 4,E
+        gr.mem.set(2, 0b0001_0000);
         gr[R16::HL] = 2;
         gr.update();
-        assert_eq!(gr[2], 0b0001_0000);
+        assert_eq!(gr.mem.get(2), 0b0001_0000);
         gr[R16::PC] = 0;
-        gr[1] = 0xee; //set 5,E
+        gr.mem.set(1, 0xee); //set 5,E
         gr.update();
-        assert_eq!(gr[2], 0b0011_0000);
+        assert_eq!(gr.mem.get(2), 0b0011_0000);
     }
 
     //CPU control
     #[test]
-    fn test_ccf() {
+    fn ccf() {
         let mut gr = GameRusty::new();
-        gr[0] = 0x3f;
+        gr.mem.set(0, 0x3f);
         gr.set_c(false);
         gr.update();
         assert_eq!(gr.c(), true);
@@ -2295,9 +2282,9 @@ mod test {
     }
 
     #[test]
-    fn test_scf() {
+    fn scf() {
         let mut gr = GameRusty::new();
-        gr[0] = 0x37;
+        gr.mem.set(0, 0x37);
         gr.set_c(false);
         gr.update();
         assert_eq!(gr.c(), true);
@@ -2307,25 +2294,25 @@ mod test {
     }
 
     #[test]
-    fn test_nop() {
+    fn nop() {
         let mut gr = GameRusty::new();
-        gr[0] = 0;
+        gr.mem.set(0, 0);
         gr[R16::PC] = 0;
         gr.update();
         assert_eq!(gr[R16::PC], 1);
     }
     #[test]
-    fn test_di() {
+    fn di() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xf3;
+        gr.mem.set(0, 0xf3);
         gr.cpu.i = true;
         gr.update();
         assert_eq!(gr.cpu.i, false);
     }
     #[test]
-    fn test_ei() {
+    fn ei() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xfb;
+        gr.mem.set(0, 0xfb);
         gr.cpu.i = false;
         gr.update();
         assert_eq!(gr.cpu.i, true);
@@ -2333,30 +2320,30 @@ mod test {
 
     //jump
     #[test]
-    fn test_jp_n() {
+    fn jp_n() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xc3;
-        gr[1] = 0xfc;
-        gr[2] = 0xca;
+        gr.mem.set(0, 0xc3);
+        gr.mem.set(1, 0xfc);
+        gr.mem.set(2, 0xca);
         gr.update();
         assert_eq!(gr[R16::PC], 0xcafc);
     }
 
     #[test]
-    fn test_jp_hl() {
+    fn jp_hl() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xe9;
+        gr.mem.set(0, 0xe9);
         gr[R16::HL] = 0xcafc;
         gr.update();
         assert_eq!(gr[R16::PC], 0xcafc);
     }
 
     #[test]
-    fn test_jp_c_n() {
+    fn jp_c_n() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xca;
-        gr[1] = 0xfc;
-        gr[2] = 0xca;
+        gr.mem.set(0, 0xca);
+        gr.mem.set(1, 0xfc);
+        gr.mem.set(2, 0xca);
         gr.set_z(false);
         gr.update();
         assert_eq!(gr[R16::PC], 3);
@@ -2367,37 +2354,37 @@ mod test {
     }
 
     #[test]
-    fn test_jr_d() {
+    fn jr_d() {
         let mut gr = GameRusty::new();
-        gr[0] = 0x18;
-        gr[1] = 0x4a;
+        gr.mem.set(0, 0x18);
+        gr.mem.set(1, 0x4a);
         gr.update();
         assert_eq!(gr[R16::PC], 0x004c);
         gr[R16::PC] = 0;
-        gr[1] = 0xff;
+        gr.mem.set(1, 0xff);
         gr.update();
         assert_eq!(gr[R16::PC], 1);
     }
 
     #[test]
-    fn test_jr_c_d() {
+    fn jr_c_d() {
         let mut gr = GameRusty::new();
-        gr[0] = 0x20;
-        gr[1] = 0x4a;
+        gr.mem.set(0, 0x20);
+        gr.mem.set(1, 0x4a);
         gr.update();
         assert_eq!(gr[R16::PC], 0x004c);
         gr[R16::PC] = 0;
-        gr[1] = 0xff;
+        gr.mem.set(1, 0xff);
         gr.set_z(true);
         gr.update();
         assert_eq!(gr[R16::PC], 2);
     }
     #[test]
-    fn test_call_n() {
+    fn call_n() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xcd;
-        gr[1] = 0xfc;
-        gr[2] = 0xca;
+        gr.mem.set(0, 0xcd);
+        gr.mem.set(1, 0xfc);
+        gr.mem.set(2, 0xca);
         gr[R16::SP] = 6;
         gr.update();
         assert_eq!(gr[R16::PC], 0xcafc);
@@ -2405,11 +2392,11 @@ mod test {
         assert_eq!(gr[R16::SP], 4);
     }
     #[test]
-    fn test_call_c_n() {
+    fn call_c_n() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xd4; //CALL NC, u16
-        gr[1] = 0xfc;
-        gr[2] = 0xca;
+        gr.mem.set(0, 0xd4); //CALL NC, u16
+        gr.mem.set(1, 0xfc);
+        gr.mem.set(2, 0xca);
         gr[R16::SP] = 6;
         gr.set_c(false);
         gr.update();
@@ -2424,22 +2411,22 @@ mod test {
     }
 
     #[test]
-    fn test_ret() {
+    fn ret() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xc9;
-        gr[1] = 0xfc;
-        gr[2] = 0xca;
+        gr.mem.set(0, 0xc9);
+        gr.mem.set(1, 0xfc);
+        gr.mem.set(2, 0xca);
         gr[R16::SP] = 1;
         gr.update();
         assert_eq!(gr[R16::PC], 0xcafc);
         assert_eq!(gr[R16::SP], 3);
     }
     #[test]
-    fn test_ret_c() {
+    fn ret_c() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xd8;
-        gr[1] = 0xfc;
-        gr[2] = 0xca;
+        gr.mem.set(0, 0xd8);
+        gr.mem.set(1, 0xfc);
+        gr.mem.set(2, 0xca);
         gr[R16::SP] = 1;
         gr.set_c(true);
         gr.update();
@@ -2452,11 +2439,11 @@ mod test {
         assert_eq!(gr[R16::SP], 3);
     }
     #[test]
-    fn test_reti() {
+    fn reti() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xD9;
-        gr[1] = 0xfc;
-        gr[2] = 0xca;
+        gr.mem.set(0, 0xD9);
+        gr.mem.set(1, 0xfc);
+        gr.mem.set(2, 0xca);
         gr[R16::SP] = 1;
         gr.set_i(false);
         gr.update();
@@ -2466,9 +2453,9 @@ mod test {
     }
 
     #[test]
-    fn test_rst() {
+    fn rst() {
         let mut gr = GameRusty::new();
-        gr[0] = 0xc7;
+        gr.mem.set(0, 0xc7);
         gr[R16::SP] = 3;
         gr.update();
         assert_eq!(gr[R16::PC], 0);
